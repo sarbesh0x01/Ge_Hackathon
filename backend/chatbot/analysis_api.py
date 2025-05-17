@@ -140,4 +140,4 @@ def get_analysis_context(analysis_id: Optional[str] = None) -> Dict:
         latest_id = list(analysis_store.keys())[-1]
         return analysis_store[latest_id]
     else:
-        return {}       return {}
+        return {}

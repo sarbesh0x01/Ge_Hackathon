@@ -4,7 +4,6 @@ from typing import List, Optional, Dict, Any
 import logging
 import time
 import os
-import json
 
 # Configure logging
 logging.basicConfig(
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Import the model
 from .model import DisasterChatbot
 
-# Import the analysis context handler
+# Import the analysis context handler (if available)
 try:
     from .analysis_api import get_analysis_context
     has_analysis_integration = True

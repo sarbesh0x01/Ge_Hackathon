@@ -164,13 +164,16 @@ class DisasterImageAnalyzer:
                 "processing_device": self.device
             }
             
+            # Generate recommendations based on analysis
+            recommendations = self._get_recommendations(impact_level["level"], disaster_type)
+            
             # Compile analysis details
             analysis_details = {
                 "changed_pixels": int(np.count_nonzero(thresh)),
                 "total_pixels": thresh.size,
                 "average_intensity_change": float(np.mean(diff)),
                 "regions_of_interest": roi_data,
-                "recommendations": self._get_recommendations(impact_level["level"], disaster_type)
+                "recommendations": recommendations
             }
             
             # Create result object
