@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 import logging
 import time
 import os
+import inspect
 
 # Configure logging
 logging.basicConfig(
@@ -84,21 +85,44 @@ async def chat(request: ChatRequest, bot: DisasterChatbot = Depends(get_initiali
     try:
         # Check if analysis context is requested
         analysis_context = None
-        if request.analysis_id and has_analysis_integration:
-            analysis_context = get_analysis_context(request.analysis_id)
-            logger.info(f"Retrieved analysis context for ID: {request.analysis_id}")
-        elif has_analysis_integration:
-            # Try to get the latest analysis
-            analysis_context = get_analysis_context()
-            if analysis_context:
-                logger.info("Retrieved latest analysis context")
+        if has_analysis_integration:
+            if request.analysis_id:
+                analysis_context = get_analysis_context(request.analysis_id)
+                logger.info(f"Retrieved analysis context for ID: {request.analysis_id}")
+            else:
+                # Try to get the latest analysis
+                analysis_context = get_analysis_context()
+                if analysis_context:
+                    logger.info("Retrieved latest analysis context")
+
+        # Check if generate_response accepts analysis_context parameter
+        # This makes our code work with both old and new versions of model.py
+        sig = inspect.signature(bot.generate_response)
         
-        # Generate response with web search if enabled
-        response = bot.generate_response(
-            request.message, 
-            use_web_search=request.use_web_search,
-            analysis_context=analysis_context
-        )
+        if 'analysis_context' in sig.parameters:
+            # New version of model.py that accepts analysis_context
+            response = bot.generate_response(
+                request.message, 
+                use_web_search=request.use_web_search,
+                analysis_context=analysis_context
+            )
+        else:
+            # Old version of model.py without analysis_context
+            logger.warning("Using model.py without analysis_context support")
+            response = bot.generate_response(
+                request.message, 
+                use_web_search=request.use_web_search
+            )
+            
+            # If we have analysis context but the model doesn't support it,
+            # we can add some basic info to the response here
+            if analysis_context:
+                extra_info = "\n\nI have some analysis information available, but can't fully integrate it. "
+                if "disaster_type" in analysis_context:
+                    extra_info += f"The analysis detected a {analysis_context['disaster_type']} event. "
+                if "impact_level" in analysis_context:
+                    extra_info += f"Impact level: {analysis_context['impact_level']}."
+                response += extra_info
         
         end_time = time.time()
         

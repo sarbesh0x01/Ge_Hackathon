@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
 import json
+import traceback
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -105,13 +106,48 @@ class DisasterImageAnalyzer:
             display_size = options.get("display_size", self.default_display_size)
             threshold = options.get("threshold", self.threshold_value)
             
-            # Convert bytes to OpenCV format
-            pre_img = self._bytes_to_cv2(pre_image_data)
-            post_img = self._bytes_to_cv2(post_image_data)
+            logger.info(f"Starting image analysis with target_size={target_size}, threshold={threshold}")
             
-            # Resize images for analysis
-            pre_img = cv2.resize(pre_img, target_size)
-            post_img = cv2.resize(post_img, target_size)
+            # Convert bytes to OpenCV format with error handling
+            try:
+                pre_img = self._bytes_to_cv2(pre_image_data)
+                post_img = self._bytes_to_cv2(post_image_data)
+                
+                # Log image sizes for debugging
+                logger.info(f"Original image sizes - Pre: {pre_img.shape}, Post: {post_img.shape}")
+                
+            except Exception as e:
+                logger.error(f"Error converting images: {e}")
+                logger.error(traceback.format_exc())
+                raise ValueError(f"Failed to convert image data: {str(e)}")
+            
+            # Resize images for analysis - with explicit error handling
+            try:
+                # Ensure images have the same number of channels
+                if len(pre_img.shape) == 2:  # Grayscale
+                    pre_img = cv2.cvtColor(pre_img, cv2.COLOR_GRAY2BGR)
+                if len(post_img.shape) == 2:  # Grayscale
+                    post_img = cv2.cvtColor(post_img, cv2.COLOR_GRAY2BGR)
+                
+                # Force 3-channel RGB if needed
+                if pre_img.shape[2] == 4:  # RGBA
+                    pre_img = cv2.cvtColor(pre_img, cv2.COLOR_RGBA2RGB)
+                if post_img.shape[2] == 4:  # RGBA
+                    post_img = cv2.cvtColor(post_img, cv2.COLOR_RGBA2RGB)
+                
+                # Resize to target size
+                pre_img = cv2.resize(pre_img, target_size)
+                post_img = cv2.resize(post_img, target_size)
+                
+                # Verify images are the same size after resizing
+                assert pre_img.shape == post_img.shape, f"Image shapes don't match after resize: {pre_img.shape} vs {post_img.shape}"
+                
+                logger.info(f"Resized image sizes - Pre: {pre_img.shape}, Post: {post_img.shape}")
+                
+            except Exception as e:
+                logger.error(f"Error resizing images: {e}")
+                logger.error(traceback.format_exc())
+                raise ValueError(f"Failed to resize images to compatible formats: {str(e)}")
             
             # Basic analysis - Convert to grayscale for comparison
             pre_gray = cv2.cvtColor(pre_img, cv2.COLOR_BGR2GRAY)
@@ -198,24 +234,44 @@ class DisasterImageAnalyzer:
             
         except Exception as e:
             logger.error(f"Error analyzing images: {str(e)}")
+            logger.error(traceback.format_exc())
             raise RuntimeError(f"Failed to analyze images: {str(e)}")
     
     def _bytes_to_cv2(self, image_data: bytes) -> np.ndarray:
-        """Convert image bytes to OpenCV format"""
-        # Convert to numpy array
-        image = np.array(Image.open(io.BytesIO(image_data)))
-        
-        # Convert from RGB to BGR (OpenCV format)
-        if len(image.shape) == 3 and image.shape[2] == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        
-        return image
+        """Convert image bytes to OpenCV format with robust error handling"""
+        try:
+            # Convert to numpy array via PIL (more robust for different formats)
+            pil_image = Image.open(io.BytesIO(image_data))
+            
+            # Convert to RGB if needed
+            if pil_image.mode == 'RGBA':
+                pil_image = pil_image.convert('RGB')
+            elif pil_image.mode != 'RGB' and pil_image.mode != 'L':
+                pil_image = pil_image.convert('RGB')
+                
+            # Convert to numpy array
+            image = np.array(pil_image)
+            
+            # Convert from RGB to BGR (OpenCV format)
+            if len(image.shape) == 3 and image.shape[2] == 3:
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            
+            return image
+            
+        except Exception as e:
+            logger.error(f"Error converting image bytes to OpenCV format: {e}")
+            raise ValueError(f"Invalid image format: {str(e)}")
     
     def _cv2_to_base64(self, image: np.ndarray) -> str:
         """Convert an OpenCV image to base64 string for web display"""
         # Convert OpenCV image to base64 string
-        _, buffer = cv2.imencode('.png', image)
-        return base64.b64encode(buffer).decode('utf-8')
+        try:
+            _, buffer = cv2.imencode('.png', image)
+            return base64.b64encode(buffer).decode('utf-8')
+        except Exception as e:
+            logger.error(f"Error converting image to base64: {e}")
+            # Return a placeholder if conversion fails
+            return ""
     
     def _get_timestamp(self) -> str:
         """Get current timestamp string"""
