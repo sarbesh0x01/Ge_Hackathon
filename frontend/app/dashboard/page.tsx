@@ -61,9 +61,9 @@ export default function DashboardPage() {
                     <div key={index} className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <span className={`w-3 h-3 rounded-full ${index === 0 ? "bg-red-500" :
-                            index === 1 ? "bg-blue-500" :
-                              index === 2 ? "bg-amber-500" :
-                                "bg-green-500"
+                          index === 1 ? "bg-blue-500" :
+                            index === 2 ? "bg-amber-500" :
+                              "bg-green-500"
                           }`}></span>
                         <span>{item.type}</span>
                       </div>
@@ -113,8 +113,8 @@ export default function DashboardPage() {
                         <div className="w-32 h-2 bg-gray-200 rounded-full">
                           <div
                             className={`h-full rounded-full ${item.affectedPercentage > 70 ? "bg-red-500" :
-                                item.affectedPercentage > 40 ? "bg-amber-500" :
-                                  "bg-green-500"
+                              item.affectedPercentage > 40 ? "bg-amber-500" :
+                                "bg-green-500"
                               }`}
                             style={{ width: `${item.affectedPercentage}%` }}
                           ></div>
@@ -136,15 +136,15 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Property Damage</span>
-                    <span className="font-medium">$1.6B</span>
+                    <span className="font-medium">$100k</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Business Interruption</span>
-                    <span className="font-medium">$750M</span>
+                    <span className="font-medium">$750k</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Infrastructure Damage</span>
-                    <span className="font-medium">$400M</span>
+                    <span className="font-medium">$400k</span>
                   </div>
                 </div>
               </div>

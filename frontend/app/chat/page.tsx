@@ -13,12 +13,8 @@ export default function ChatPage() {
   // (But remove it before production!)
   const groqApiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
 
-  // Uncomment and replace this with your actual key for direct testing if env vars aren't working
-  // const groqApiKey = "gsk_your_actual_key_here";
-
   // Helpful debugging for environment variables
   console.log("API Key available:", groqApiKey ? "Yes (starts with " + groqApiKey.substring(0, 4) + ")" : "No");
-
 
   return (
     <div className="space-y-6">
@@ -113,91 +109,52 @@ export default function ChatPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-red-600" />
-                Emergency Contacts
-              </CardTitle>
-              <CardDescription>Important numbers and resources</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="border-l-4 border-red-600 pl-3">
-                  <div className="font-medium">Emergency Services</div>
-                  <div className="text-lg font-bold">911</div>
-                  <div className="text-xs text-gray-500">For immediate life-threatening emergencies</div>
-                </div>
-
-                <div className="border-l-4 border-blue-600 pl-3">
-                  <div className="font-medium">FEMA Disaster Assistance</div>
-                  <div className="text-lg font-bold">1-800-621-3362</div>
-                  <div className="text-xs text-gray-500">Apply for disaster assistance</div>
-                </div>
-
-                <div className="border-l-4 border-green-600 pl-3">
-                  <div className="font-medium">Red Cross</div>
-                  <div className="text-lg font-bold">1-800-733-2767</div>
-                  <div className="text-xs text-gray-500">Disaster relief and emergency assistance</div>
-                </div>
-
-                <div className="border-l-4 border-purple-600 pl-3">
-                  <div className="font-medium">Poison Control</div>
-                  <div className="text-lg font-bold">1-800-222-1222</div>
-                  <div className="text-xs text-gray-500">Poison emergencies and information</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <LinkIcon className="h-5 w-5 text-blue-600" />
-                Helpful Resources
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <a
-                  href="https://www.ready.gov"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-                >
-                  <span>Ready.gov</span>
-                  <LinkIcon className="h-4 w-4 text-gray-400" />
-                </a>
-                <a
-                  href="https://www.redcross.org/get-help/disaster-relief-and-recovery-services.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-                >
-                  <span>Red Cross Disaster Relief</span>
-                  <LinkIcon className="h-4 w-4 text-gray-400" />
-                </a>
-                <a
-                  href="https://www.fema.gov"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-                >
-                  <span>FEMA</span>
-                  <LinkIcon className="h-4 w-4 text-gray-400" />
-                </a>
-                <a
-                  href="https://www.disasterassistance.gov"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-                >
-                  <span>DisasterAssistance.gov</span>
-                  <LinkIcon className="h-4 w-4 text-gray-400" />
-                </a>
-              </div>
-            </CardContent>
-          </Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5 text-blue-600" />
+              Helpful Resources
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <a
+                href="https://moha.gov.np/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
+              >
+                <span>MOHA</span>
+                <LinkIcon className="h-4 w-4 text-gray-400" />
+              </a>
+              <a
+                href="https://nrcs.org/disaster-management/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
+              >
+                <span>Red Cross Disaster Relief</span>
+                <LinkIcon className="h-4 w-4 text-gray-400" />
+              </a>
+              <a
+                href="https://www.nepalpolice.gov.np/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
+              >
+                <span>Nepal Police</span>
+                <LinkIcon className="h-4 w-4 text-gray-400" />
+              </a>
+              <a
+                href="https://bipad.gov.np/np/national-platform-for-disaster-risk-reduction-npdrr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
+              >
+                <span>Disaster Assistance</span>
+                <LinkIcon className="h-4 w-4 text-gray-400" />
+              </a>
+            </div>
+          </CardContent>
         </div>
       </div>
 

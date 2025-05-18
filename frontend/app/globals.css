@@ -3,6 +3,326 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes wave-slow {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-20px) scaleY(1.05); }
+}
+
+@keyframes wave-medium {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-15px) scaleY(1.03); }
+}
+
+@keyframes wave-fast {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  33% { transform: translateY(-8px) scaleY(1.02); }
+  66% { transform: translateY(-12px) scaleY(1.01); }
+}
+
+@keyframes float-debris-1 {
+  0% { transform: translate(0, 0) rotate(12deg); }
+  25% { transform: translate(15px, 20px) rotate(15deg); }
+  50% { transform: translate(30px, 5px) rotate(18deg); }
+  75% { transform: translate(15px, -10px) rotate(14deg); }
+  100% { transform: translate(0, 0) rotate(12deg); }
+}
+
+@keyframes float-debris-2 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-20px, 15px) rotate(-2deg); }
+  50% { transform: translate(-5px, 30px) rotate(2deg); }
+  75% { transform: translate(20px, 15px) rotate(0deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes float-debris-3 {
+  0% { transform: translate(0, 0) rotate(45deg); }
+  25% { transform: translate(25px, -15px) rotate(40deg); }
+  50% { transform: translate(0, -30px) rotate(35deg); }
+  75% { transform: translate(-25px, -15px) rotate(42deg); }
+  100% { transform: translate(0, 0) rotate(45deg); }
+}
+
+@keyframes float-debris-4 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(15px, 15px) rotate(2deg); }
+  66% { transform: translate(-15px, 30px) rotate(-2deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes float-debris-5 {
+  0% { transform: translate(0, 0) rotate(-10deg); }
+  25% { transform: translate(-10px, 10px) rotate(-5deg); }
+  50% { transform: translate(5px, 15px) rotate(0deg); }
+  75% { transform: translate(20px, 5px) rotate(-15deg); }
+  100% { transform: translate(0, 0) rotate(-10deg); }
+}
+
+@keyframes bubble-1 {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+}
+
+@keyframes bubble-2 {
+  0% { transform: translateY(0) scale(1); opacity: 0.5; }
+  20% { transform: translateY(-30px) translateX(10px) scale(1.05); opacity: 0.5; }
+  100% { transform: translateY(-150px) translateX(20px) scale(1.3); opacity: 0; }
+}
+
+@keyframes bubble-3 {
+  0% { transform: translateY(0) scale(1); opacity: 0.7; }
+  30% { transform: translateY(-25px) translateX(-5px) scale(1.1); opacity: 0.6; }
+  100% { transform: translateY(-100px) translateX(-15px) scale(1.2); opacity: 0; }
+}
+
+@keyframes bubble-4 {
+  0% { transform: translateY(0) scale(1); opacity: 0.4; }
+  25% { transform: translateY(-40px) translateX(5px) scale(1.15); opacity: 0.35; }
+  100% { transform: translateY(-130px) translateX(15px) scale(1.4); opacity: 0; }
+}
+
+@keyframes bubble-5 {
+  0% { transform: translateY(0) scale(1); opacity: 0.3; }
+  20% { transform: translateY(-20px) translateX(-10px) scale(1.1); opacity: 0.3; }
+  100% { transform: translateY(-180px) translateX(-25px) scale(1.5); opacity: 0; }
+}
+
+@keyframes bubble-6 {
+  0% { transform: translateY(0) scale(1); opacity: 0.65; }
+  30% { transform: translateY(-30px) translateX(8px) scale(1.05); opacity: 0.5; }
+  100% { transform: translateY(-110px) translateX(20px) scale(1.2); opacity: 0; }
+}
+
+@keyframes splash-1 {
+  0% { transform: scale(0.3) translateY(50px); opacity: 0; }
+  40% { transform: scale(1) translateY(0); opacity: 0.8; }
+  80% { transform: scale(0.9) translateY(-10px); opacity: 0.3; }
+  100% { transform: scale(0.85) translateY(-15px); opacity: 0; }
+}
+
+@keyframes splash-2 {
+  0% { transform: scale(0.3) translateY(50px); opacity: 0; }
+  10% { transform: scale(0.5) translateY(25px); opacity: 0.2; }
+  50% { transform: scale(1) translateY(0); opacity: 0.7; }
+  90% { transform: scale(0.9) translateY(-10px); opacity: 0.2; }
+  100% { transform: scale(0.85) translateY(-15px); opacity: 0; }
+}
+
+@keyframes ripple-1 {
+  0% { transform: scale(0); opacity: 0.5; border: 2px solid rgba(255,255,255,0.5); }
+  100% { transform: scale(4); opacity: 0; border: 2px solid rgba(255,255,255,0); }
+}
+
+@keyframes ripple-2 {
+  0% { transform: scale(0); opacity: 0.4; border: 2px solid rgba(255,255,255,0.4); }
+  100% { transform: scale(5); opacity: 0; border: 2px solid rgba(255,255,255,0); }
+}
+
+@keyframes ripple-3 {
+  0% { transform: scale(0); opacity: 0.6; border: 2px solid rgba(255,255,255,0.6); }
+  100% { transform: scale(3.5); opacity: 0; border: 2px solid rgba(255,255,255,0); }
+}
+
+.animate-wave-slow {
+  animation: wave-slow 14s ease-in-out infinite;
+}
+
+.animate-wave-medium {
+  animation: wave-medium 8s ease-in-out infinite;
+}
+
+.animate-wave-fast {
+  animation: wave-fast 6s ease-in-out infinite;
+}
+
+.animate-float-debris-1 {
+  animation: float-debris-1 15s ease-in-out infinite;
+}
+
+.animate-float-debris-2 {
+  animation: float-debris-2 18s ease-in-out infinite;
+}
+
+.animate-float-debris-3 {
+  animation: float-debris-3 20s ease-in-out infinite;
+}
+
+.animate-float-debris-4 {
+  animation: float-debris-4 16s ease-in-out infinite;
+}
+
+.animate-float-debris-5 {
+  animation: float-debris-5 22s ease-in-out infinite;
+}
+
+.animate-bubble-1 {
+  animation: bubble-1 3.5s ease-in infinite;
+  animation-delay: 0.2s;
+}
+
+.animate-bubble-2 {
+  animation: bubble-2 4s ease-in infinite;
+  animation-delay: 1.1s;
+}
+
+.animate-bubble-3 {
+  animation: bubble-3 3s ease-in infinite;
+  animation-delay: 0.5s;
+}
+
+.animate-bubble-4 {
+  animation: bubble-4 4.5s ease-in infinite;
+  animation-delay: 1.7s;
+}
+
+.animate-bubble-5 {
+  animation: bubble-5 5s ease-in infinite;
+  animation-delay: 0.8s;
+}
+
+.animate-bubble-6 {
+  animation: bubble-6 3.2s ease-in infinite;
+  animation-delay: 1.3s;
+}
+
+.animate-splash-1 {
+  animation: splash-1 2s ease-out forwards;
+  animation-delay: 1s;
+}
+
+.animate-splash-2 {
+  animation: splash-2 2.5s ease-out forwards;
+  animation-delay: 2s;
+}
+
+.animate-ripple-1 {
+  animation: ripple-1 4s linear infinite;
+}
+
+.animate-ripple-2 {
+  animation: ripple-2 5s linear infinite;
+  animation-delay: 1s;
+}
+
+.animate-ripple-3 {
+  animation: ripple-3 3.5s linear infinite;
+  animation-delay: 1.5s;
+}
+
+.transition-transform.duration-4000 {
+  transition-duration: 4000ms;
+}
+
+.bg-grid-water {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
+}
+
+@keyframes wave-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes wave-medium {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(10px, 15px); }
+  50% { transform: translate(20px, 0); }
+  75% { transform: translate(10px, -15px); }
+}
+
+@keyframes float-medium {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-15px, 10px); }
+  50% { transform: translate(0, 20px); }
+  75% { transform: translate(15px, 10px); }
+}
+
+@keyframes float-fast {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(20px, -10px); }
+  50% { transform: translate(0, -20px); }
+  75% { transform: translate(-20px, -10px); }
+}
+
+@keyframes bubble-1 {
+  0% { transform: translateY(0); opacity: 0.6; }
+  100% { transform: translateY(-100px); opacity: 0; }
+}
+
+@keyframes bubble-2 {
+  0% { transform: translateY(0); opacity: 0.7; }
+  100% { transform: translateY(-150px); opacity: 0; }
+}
+
+@keyframes bubble-3 {
+  0% { transform: translateY(0); opacity: 0.5; }
+  100% { transform: translateY(-80px); opacity: 0; }
+}
+
+@keyframes bubble-4 {
+  0% { transform: translateY(0); opacity: 0.6; }
+  100% { transform: translateY(-120px); opacity: 0; }
+}
+
+.animate-wave-slow {
+  animation: wave-slow 8s ease-in-out infinite;
+}
+
+.animate-wave-medium {
+  animation: wave-medium 6s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float-slow 20s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 15s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 10s ease-in-out infinite;
+}
+
+.animate-bubble-1 {
+  animation: bubble-1 3s ease-in infinite;
+  animation-delay: 0.2s;
+}
+
+.animate-bubble-2 {
+  animation: bubble-2 2.5s ease-in infinite;
+  animation-delay: 0.5s;
+}
+
+.animate-bubble-3 {
+  animation: bubble-3 3.5s ease-in infinite;
+  animation-delay: 0.1s;
+}
+
+.animate-bubble-4 {
+  animation: bubble-4 3s ease-in infinite;
+  animation-delay: 0.7s;
+}
+
+.transition-transform.duration-4000 {
+  transition-duration: 4000ms;
+}
+
+.bg-grid-water {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
+}
+
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

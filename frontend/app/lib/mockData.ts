@@ -1,19 +1,19 @@
 // Mock data for the disaster assessment application
 export const disasterData = {
   disasterInfo: {
-    name: "Hurricane Atlas",
-    date: "2025-03-15",
-    location: "Coastal City, FL",
-    type: "Hurricane",
-    severity: "Category 4"
+    name: "Flood and Landslide",
+    date: "2024-09-26",
+    location: "Roshi, Panauti",
+    type: "Flood and Landslide",
+    severity: "High Damage"
   },
 
   damageAssessment: {
     buildingDamage: {
-      percentage: 65,
+      percentage: 40,
       types: [
-        { type: "Collapsed", percentage: 22 },
-        { type: "Flooded", percentage: 38 },
+        { type: "Collapsed", percentage: 20 },
+        { type: "Flooded", percentage: 30 },
         { type: "Minor Damage", percentage: 30 },
         { type: "Undamaged", percentage: 10 }
       ]
@@ -38,13 +38,13 @@ export const disasterData = {
   },
 
   impactAnalysis: {
-    peopleAffected: 125000,
-    peopleDisplaced: 42000,
+    peopleAffected: 1290,
+    peopleDisplaced: 997,
     peopleInjured: 1850,
-    fatalitiesReported: 37,
-    economicLoss: 2750000000, // in USD
+    fatalitiesReported: 12,
+    economicLoss: 34000000, // in USD
     criticalInfrastructure: [
-      { type: "Hospitals", status: "Partially Operational", affectedPercentage: 45 },
+      { type: "Hospitals", status: "Partially Operational", affectedPercentage: 15 },
       { type: "Schools", status: "Closed", affectedPercentage: 85 },
       { type: "Emergency Services", status: "Operational", affectedPercentage: 25 },
       { type: "Government Buildings", status: "Partially Operational", affectedPercentage: 50 }
@@ -53,8 +53,8 @@ export const disasterData = {
 
   emergencyResponse: {
     averageResponseTime: 35, // minutes
-    callsReceived: 12500,
-    callsResponded: 11200,
+    callsReceived: 125,
+    callsResponded: 105,
     responseRate: 89.6, // percentage
     resourceAllocation: {
       personnel: 1250,
@@ -89,11 +89,11 @@ export const disasterData = {
 
   vulnerabilityAnalysis: {
     highRiskAreas: [
-      { name: "Coastal District", riskLevel: "Extreme", population: 28000 },
-      { name: "Riverfront Zone", riskLevel: "High", population: 35000 },
-      { name: "Downtown Area", riskLevel: "Medium", population: 42000 }
+      { name: "Coastal District", riskLevel: "Extreme", population: 2800 },
+      { name: "Riverfront Zone", riskLevel: "High", population: 3500 },
+      { name: "Downtown Area", riskLevel: "Medium", population: 1400 }
     ],
-    preparednessScore: 62, // percentage
+    preparednessScore: 32, // percentage
     resilienceIndex: 58, // percentage
     recommendedImprovements: [
       "Enhance early warning systems",
@@ -129,7 +129,7 @@ export const disasterData = {
 
   recovery: {
     estimatedTime: {
-      shortTerm: "3 months",
+      shortTerm: "2 months",
       mediumTerm: "18 months",
       longTerm: "5 years"
     },
@@ -141,7 +141,7 @@ export const disasterData = {
     infrastructureReconstruction: {
       essential: "6 months",
       nonEssential: "2-3 years",
-      estimatedCost: 1850000000 // in USD
+      estimatedCost: 18500000 // in USD
     }
   },
 

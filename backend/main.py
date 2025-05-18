@@ -1,8 +1,9 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 import cv2
 import numpy as np
 import os
@@ -10,15 +11,41 @@ import uuid
 import shutil
 from datetime import datetime
 import logging
-from PIL import Image
+from PIL import Image, ImageOps, ImageEnhance
 import io
 import base64
+import random
+import time
+import json
+from sklearn.cluster import KMeans
+from pathlib import Path
+import tensorflow as tf
+import joblib
+import math
+import warnings
+
+# Suppress warnings
+warnings.filterwarnings("ignore")
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Disaster Assessment API")
+app = FastAPI(
+    title="Disaster Assessment API",
+    description="API for analyzing before and after disaster images to assess damage",
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
 
 # Configure CORS
 app.add_middleware(
@@ -30,16 +57,67 @@ app.add_middleware(
 )
 
 # Create directories for storing images
-os.makedirs("uploads", exist_ok=True)
-os.makedirs("results", exist_ok=True)
+UPLOAD_DIR = Path("uploads")
+RESULTS_DIR = Path("results")
+CACHE_DIR = Path("cache")
+MODEL_DIR = Path("models")
 
+for directory in [UPLOAD_DIR, RESULTS_DIR, CACHE_DIR, MODEL_DIR]:
+    directory.mkdir(exist_ok=True)
 
+# Define models
 class ImageComparisonRequest(BaseModel):
     before_image_id: str
     after_image_id: str
     region: Optional[str] = None
     disaster_type: Optional[str] = None
+    analysis_level: Optional[str] = "standard"  # "basic", "standard", "detailed"
+    include_raw_data: Optional[bool] = False
+    async_mode: Optional[bool] = True
 
+class AnalysisProgress(BaseModel):
+    comparison_id: str
+    status: str  # "queued", "processing", "completed", "failed"
+    progress: float  # 0-100
+    message: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+class DamagedArea(BaseModel):
+    id: int
+    coordinates: List[int]
+    area: float
+    severity: str
+    type: str
+    confidence: float
+
+class BuildingDamage(BaseModel):
+    id: int
+    coordinates: List[int]
+    severity: str
+    type: Optional[str] = None
+    confidence: float
+
+class RoadDamage(BaseModel):
+    id: int
+    coordinates: List[int]
+    severity: str
+    length: Optional[float] = None
+    confidence: float
+
+class FloodedArea(BaseModel):
+    id: int
+    coordinates: List[int]
+    water_depth: str
+    area: float
+    confidence: float
+
+class VegetationLoss(BaseModel):
+    id: int
+    coordinates: List[int]
+    area: str
+    density: Optional[str] = None
+    confidence: float
 
 class AnalysisResult(BaseModel):
     comparison_id: str
@@ -47,13 +125,61 @@ class AnalysisResult(BaseModel):
     after_image_url: str
     difference_image_url: str
     changed_pixels_percentage: float
+    severity_score: float
+    damage_overview: Dict[str, Any]
     damaged_areas: List[Dict[str, Any]]
     building_damage: List[Dict[str, Any]]
     road_damage: List[Dict[str, Any]]
     flooded_areas: List[Dict[str, Any]]
     vegetation_loss: List[Dict[str, Any]]
     created_at: str
+    analysis_level: str
+    region: Optional[str] = None
+    disaster_type: Optional[str] = None
+    raw_data: Optional[Dict[str, Any]] = None
 
+# Global variables to track analysis jobs
+analysis_jobs = {}
+
+# Mock ML models (in a production environment, these would be real models)
+def load_models():
+    """Load or initialize all required models"""
+    logger.info("Loading ML models...")
+    
+    # In a real implementation, these would be actual trained models
+    # For the sake of this example, we're creating mock models
+    models = {
+        "building_detector": "Building Detector Model",
+        "road_detector": "Road Detector Model",
+        "damage_classifier": "Damage Classifier Model",
+        "water_detector": "Water Detector Model",
+        "vegetation_detector": "Vegetation Detector Model"
+    }
+    
+    logger.info("Models loaded successfully")
+    return models
+
+# Initialize models
+ml_models = load_models()
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize resources on startup"""
+    global ml_models
+    ml_models = load_models()
+    logger.info("Application started successfully")
+
+# Add API status endpoint for frontend to check if API is available
+@app.get("/api/status")
+async def get_api_status():
+    """
+    Check if the API is available.
+    """
+    return {
+        "status": "available",
+        "version": "1.0.0",
+        "timestamp": datetime.now().isoformat()
+    }
 
 @app.post("/api/upload-image", response_model=Dict[str, str])
 async def upload_image(file: UploadFile = File(...)):
@@ -61,53 +187,127 @@ async def upload_image(file: UploadFile = File(...)):
     Upload a single image file for disaster analysis.
     """
     try:
+        # Validate file type
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".tif", ".tiff"}
+        file_extension = os.path.splitext(file.filename)[1].lower()
+        
+        if file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}"
+            )
+        
         # Generate a unique filename
-        file_extension = file.filename.split(".")[-1]
-        filename = f"{uuid.uuid4()}.{file_extension}"
-        file_path = os.path.join("uploads", filename)
+        unique_id = uuid.uuid4()
+        filename = f"{unique_id}{file_extension}"
+        file_path = UPLOAD_DIR / filename
         
         # Save the file
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
+        # Create a thumbnail for faster loading (optional)
+        create_thumbnail(file_path)
+        
+        logger.info(f"Image uploaded successfully: {filename}")
         return {"image_id": filename, "url": f"/api/images/{filename}"}
     
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error uploading image: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
 
+def create_thumbnail(file_path, size=(800, 600)):
+    """Create a thumbnail version of the uploaded image"""
+    try:
+        thumbnail_dir = UPLOAD_DIR / "thumbnails"
+        thumbnail_dir.mkdir(exist_ok=True)
+        
+        thumbnail_path = thumbnail_dir / file_path.name
+        
+        img = Image.open(file_path)
+        img.thumbnail(size)
+        img.save(thumbnail_path)
+    except Exception as e:
+        logger.warning(f"Failed to create thumbnail: {str(e)}")
 
 @app.get("/api/images/{image_id}")
-async def get_image(image_id: str):
+async def get_image(image_id: str, thumbnail: bool = False):
     """
     Retrieve an uploaded image by ID.
     """
-    file_path = os.path.join("uploads", image_id)
-    if not os.path.exists(file_path):
+    if thumbnail:
+        file_path = UPLOAD_DIR / "thumbnails" / image_id
+        if not file_path.exists():
+            # If thumbnail doesn't exist, try to create it
+            original_path = UPLOAD_DIR / image_id
+            if original_path.exists():
+                create_thumbnail(original_path)
+            else:
+                raise HTTPException(status_code=404, detail="Image not found")
+    else:
+        file_path = UPLOAD_DIR / image_id
+        
+    if not file_path.exists():
         raise HTTPException(status_code=404, detail="Image not found")
     
-    return FileResponse(file_path)
+    return FileResponse(str(file_path))
 
-
-@app.post("/api/analyze", response_model=AnalysisResult)
-async def analyze_images(request: ImageComparisonRequest):
+@app.post("/api/analyze", response_model=Union[AnalysisResult, AnalysisProgress])
+async def analyze_images(
+    request: ImageComparisonRequest, 
+    background_tasks: BackgroundTasks,
+    async_mode: bool = True
+):
     """
     Analyze before and after disaster images to identify changes and damage.
+    If async_mode is True, returns a job ID and processes in the background.
+    Otherwise, processes synchronously and returns the full result.
     """
     try:
-        before_path = os.path.join("uploads", request.before_image_id)
-        after_path = os.path.join("uploads", request.after_image_id)
+        before_path = UPLOAD_DIR / request.before_image_id
+        after_path = UPLOAD_DIR / request.after_image_id
         
         # Check if images exist
-        if not os.path.exists(before_path) or not os.path.exists(after_path):
+        if not before_path.exists() or not after_path.exists():
             raise HTTPException(status_code=404, detail="One or both images not found")
         
         # Generate a unique ID for this comparison
         comparison_id = str(uuid.uuid4())
         
+        # If async mode, create a job and process in background
+        if async_mode or request.async_mode:
+            # Create initial job status
+            job_status = AnalysisProgress(
+                comparison_id=comparison_id,
+                status="queued",
+                progress=0.0,
+                created_at=datetime.now().isoformat(),
+                updated_at=datetime.now().isoformat()
+            )
+            
+            # Store job status
+            analysis_jobs[comparison_id] = job_status.dict()
+            
+            # Start background processing
+            background_tasks.add_task(
+                process_analysis_job, 
+                comparison_id=comparison_id,
+                before_path=before_path,
+                after_path=after_path,
+                disaster_type=request.disaster_type,
+                region=request.region,
+                analysis_level=request.analysis_level,
+                include_raw_data=request.include_raw_data
+            )
+            
+            return job_status
+        
+        # Otherwise, process synchronously
         # Read the images
-        before_img = cv2.imread(before_path)
-        after_img = cv2.imread(after_path)
+        before_img = cv2.imread(str(before_path))
+        after_img = cv2.imread(str(after_path))
         
         # Ensure both images have the same dimensions
         if before_img.shape != after_img.shape:
@@ -115,15 +315,294 @@ async def analyze_images(request: ImageComparisonRequest):
             after_img = cv2.resize(after_img, (before_img.shape[1], before_img.shape[0]))
         
         # Perform image comparison and damage analysis
-        result = compare_images(before_img, after_img, comparison_id, request.disaster_type)
+        result = compare_images(
+            before_img, 
+            after_img, 
+            comparison_id, 
+            request.disaster_type,
+            request.region,
+            request.analysis_level,
+            request.include_raw_data
+        )
         return result
     
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error analyzing images: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
+async def process_analysis_job(
+    comparison_id: str, 
+    before_path: Path, 
+    after_path: Path, 
+    disaster_type: Optional[str],
+    region: Optional[str],
+    analysis_level: str,
+    include_raw_data: bool
+):
+    """
+    Process an analysis job asynchronously and update its status.
+    """
+    try:
+        # Update job status to "processing"
+        update_job_status(comparison_id, "processing", 5.0, "Starting analysis...")
+        
+        # Read the images
+        before_img = cv2.imread(str(before_path))
+        update_job_status(comparison_id, "processing", 10.0, "Reading before image...")
+        
+        after_img = cv2.imread(str(after_path))
+        update_job_status(comparison_id, "processing", 15.0, "Reading after image...")
+        
+        # Ensure both images have the same dimensions
+        if before_img.shape != after_img.shape:
+            update_job_status(comparison_id, "processing", 20.0, "Resizing images...")
+            after_img = cv2.resize(after_img, (before_img.shape[1], before_img.shape[0]))
+        
+        # Perform image comparison and damage analysis
+        update_job_status(comparison_id, "processing", 25.0, "Starting comparison...")
+        
+        # Perform analysis with progress updates
+        result = compare_images_with_progress(
+            before_img, 
+            after_img, 
+            comparison_id, 
+            disaster_type,
+            region,
+            analysis_level,
+            include_raw_data
+        )
+        
+        # Update job status to "completed"
+        update_job_status(comparison_id, "completed", 100.0, "Analysis completed successfully")
+        
+        # Store the result
+        results_file = RESULTS_DIR / f"{comparison_id}.json"
+        with open(results_file, "w") as f:
+            # Convert result to dict, excluding non-serializable items
+            result_dict = {k: v for k, v in result.dict().items() if k != "raw_data"}
+            json.dump(result_dict, f)
+        
+    except Exception as e:
+        logger.error(f"Error processing job {comparison_id}: {str(e)}")
+        update_job_status(comparison_id, "failed", 0.0, f"Analysis failed: {str(e)}")
 
-def compare_images(before_img: np.ndarray, after_img: np.ndarray, comparison_id: str, disaster_type: Optional[str]) -> AnalysisResult:
+def update_job_status(comparison_id: str, status: str, progress: float, message: Optional[str] = None):
+    """
+    Update the status of an analysis job.
+    """
+    if comparison_id in analysis_jobs:
+        analysis_jobs[comparison_id].update({
+            "status": status,
+            "progress": progress,
+            "message": message,
+            "updated_at": datetime.now().isoformat()
+        })
+
+@app.get("/api/analysis-status/{comparison_id}", response_model=AnalysisProgress)
+async def get_analysis_status(comparison_id: str):
+    """
+    Get the status of an analysis job.
+    """
+    if comparison_id not in analysis_jobs:
+        raise HTTPException(status_code=404, detail="Analysis job not found")
+    
+    return analysis_jobs[comparison_id]
+
+@app.get("/api/analysis-result/{comparison_id}", response_model=AnalysisResult)
+async def get_analysis_result(comparison_id: str):
+    """
+    Get the result of a completed analysis job.
+    """
+    # Check if job exists and is completed
+    if comparison_id in analysis_jobs and analysis_jobs[comparison_id]["status"] == "completed":
+        # Try to load from file
+        results_file = RESULTS_DIR / f"{comparison_id}.json"
+        if results_file.exists():
+            with open(results_file, "r") as f:
+                return json.load(f)
+    
+    # If job exists but not completed
+    if comparison_id in analysis_jobs:
+        status = analysis_jobs[comparison_id]["status"]
+        if status == "failed":
+            raise HTTPException(status_code=500, detail="Analysis failed")
+        else:
+            raise HTTPException(status_code=202, detail=f"Analysis is still {status}")
+    
+    raise HTTPException(status_code=404, detail="Analysis result not found")
+
+# Add recommendations endpoint
+@app.get("/api/recommendations/{comparison_id}")
+async def get_recommendations(comparison_id: str, count: int = 5):
+    """
+    Get recommendations based on analysis results.
+    """
+    try:
+        # Check if the analysis exists
+        results_file = RESULTS_DIR / f"{comparison_id}.json"
+        if not results_file.exists():
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Load analysis results
+        with open(results_file, "r") as f:
+            analysis_data = json.load(f)
+        
+        # Generate recommendations based on the analysis
+        recommendations = generate_recommendations(analysis_data, count)
+        
+        return recommendations
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error generating recommendations: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate recommendations")
+
+def generate_recommendations(analysis_data: Dict[str, Any], count: int = 5) -> List[str]:
+    """
+    Generate recommendations based on analysis results.
+    """
+    recommendations = []
+    disaster_type = analysis_data.get("disaster_type", "unknown")
+    
+    # Add recommendation based on building damage
+    if "building_damage" in analysis_data and analysis_data["building_damage"]:
+        severe_buildings = [b for b in analysis_data["building_damage"] 
+                           if b.get("severity") in ["Collapsed", "Severely Damaged"]]
+        
+        if severe_buildings:
+            recommendations.append(f"Conduct structural assessments of {len(severe_buildings)} severely damaged buildings")
+        else:
+            recommendations.append("Inspect buildings for non-structural damage")
+    
+    # Add recommendation based on road damage
+    if "road_damage" in analysis_data and analysis_data["road_damage"]:
+        recommendations.append("Clear debris from damaged road sections to allow emergency vehicle access")
+    
+    # Add recommendation based on flooded areas
+    if "flooded_areas" in analysis_data and analysis_data["flooded_areas"]:
+        recommendations.append("Implement water pumping operations in flooded areas")
+    
+    # Add recommendation based on vegetation loss
+    if "vegetation_loss" in analysis_data and analysis_data["vegetation_loss"]:
+        recommendations.append("Assess ecological impact and erosion risk from vegetation loss")
+    
+    # If we still need more recommendations, add disaster-specific ones
+    if len(recommendations) < count:
+        additional_recommendations = get_disaster_specific_recommendations(disaster_type)
+        recommendations.extend(additional_recommendations)
+    
+    # Return the requested number of recommendations
+    return recommendations[:count]
+
+def get_disaster_specific_recommendations(disaster_type: str) -> List[str]:
+    """
+    Get disaster-specific recommendations.
+    """
+    recommendations = {
+        "hurricane": [
+            "Assess wind damage to roofs and exterior structures",
+            "Check for water intrusion in buildings",
+            "Inspect for damages to utilities and infrastructure",
+            "Monitor for potential secondary flooding",
+            "Establish temporary shelter for displaced residents"
+        ],
+        "flood": [
+            "Test water quality in affected areas",
+            "Monitor for mold development in water-damaged buildings",
+            "Assess foundation stability of affected structures",
+            "Clear drainage systems of debris",
+            "Implement disease prevention measures"
+        ],
+        "earthquake": [
+            "Check for gas leaks and damaged utility lines",
+            "Assess structural integrity of buildings, especially multi-story structures",
+            "Clear debris from evacuation routes",
+            "Prepare for potential aftershocks",
+            "Establish emergency communications systems"
+        ],
+        "wildfire": [
+            "Monitor air quality and distribute protective masks",
+            "Assess risk of landslides in burned areas",
+            "Inspect remaining structures for heat damage",
+            "Evaluate watershed impacts and potential flooding risks",
+            "Implement erosion control measures"
+        ],
+        "tornado": [
+            "Secure damaged structures to prevent further collapse",
+            "Clear roads of debris for emergency access",
+            "Check for damaged utilities, especially gas and electrical lines",
+            "Assess structural damage to buildings in tornado path",
+            "Establish community support centers"
+        ]
+    }
+    
+    # Return recommendations for the specific disaster type, or generic ones if not found
+    return recommendations.get(disaster_type, [
+        "Conduct immediate safety assessments of damaged structures",
+        "Establish temporary shelter for displaced residents",
+        "Clear main transportation routes",
+        "Assess utility infrastructure damage",
+        "Implement emergency communication systems"
+    ])
+
+def compare_images_with_progress(
+    before_img: np.ndarray, 
+    after_img: np.ndarray, 
+    comparison_id: str, 
+    disaster_type: Optional[str],
+    region: Optional[str],
+    analysis_level: str,
+    include_raw_data: bool
+) -> AnalysisResult:
+    """
+    Compare before and after disaster images with progress updates.
+    """
+    # Preprocessing
+    update_job_status(comparison_id, "processing", 30.0, "Preprocessing images...")
+    
+    # Image comparison
+    update_job_status(comparison_id, "processing", 40.0, "Comparing images...")
+    
+    # Damage detection
+    update_job_status(comparison_id, "processing", 50.0, "Detecting general damage...")
+    
+    # Building damage analysis
+    update_job_status(comparison_id, "processing", 60.0, "Analyzing building damage...")
+    
+    # Road damage analysis
+    update_job_status(comparison_id, "processing", 70.0, "Analyzing road damage...")
+    
+    # Flood detection
+    update_job_status(comparison_id, "processing", 80.0, "Detecting flooded areas...")
+    
+    # Vegetation analysis
+    update_job_status(comparison_id, "processing", 90.0, "Analyzing vegetation loss...")
+    
+    # Final processing
+    update_job_status(comparison_id, "processing", 95.0, "Finalizing results...")
+    
+    # Perform the actual comparison
+    return compare_images(
+        before_img, 
+        after_img, 
+        comparison_id, 
+        disaster_type,
+        region,
+        analysis_level,
+        include_raw_data
+    )
+
+def compare_images(
+    before_img: np.ndarray, 
+    after_img: np.ndarray, 
+    comparison_id: str, 
+    disaster_type: Optional[str],
+    region: Optional[str],
+    analysis_level: str = "standard",
+    include_raw_data: bool = False
+) -> AnalysisResult:
     """
     Compare before and after disaster images to identify changes and analyze damage.
     """
@@ -162,23 +641,64 @@ def compare_images(before_img: np.ndarray, after_img: np.ndarray, comparison_id:
     
     # Save the difference image
     diff_filename = f"{comparison_id}_diff.jpg"
-    diff_path = os.path.join("results", diff_filename)
-    cv2.imwrite(diff_path, diff_color)
+    diff_path = RESULTS_DIR / diff_filename
+    cv2.imwrite(str(diff_path), diff_color)
     
     # Store original images for reference
     before_filename = f"{comparison_id}_before.jpg"
     after_filename = f"{comparison_id}_after.jpg"
-    before_path = os.path.join("results", before_filename)
-    after_path = os.path.join("results", after_filename)
-    cv2.imwrite(before_path, before_img)
-    cv2.imwrite(after_path, after_img)
+    before_path = RESULTS_DIR / before_filename
+    after_path = RESULTS_DIR / after_filename
+    cv2.imwrite(str(before_path), before_img)
+    cv2.imwrite(str(after_path), after_img)
     
     # Analyze specific types of damage based on the detected changes
-    damaged_areas = analyze_damaged_areas(contours, before_img, after_img, disaster_type)
-    building_damage = detect_building_damage(before_img, after_img, contours)
-    road_damage = detect_road_damage(before_img, after_img, contours)
-    flooded_areas = detect_flooded_areas(before_img, after_img)
-    vegetation_loss = detect_vegetation_loss(before_img, after_img)
+    # The level of detail depends on the analysis_level parameter
+    damaged_areas = analyze_damaged_areas(contours, before_img, after_img, disaster_type, analysis_level)
+    
+    # Analysis varies based on the requested level
+    if analysis_level == "basic":
+        # Basic analysis only includes general damage assessment
+        building_damage = []
+        road_damage = []
+        flooded_areas = []
+        vegetation_loss = []
+    else:
+        # Standard and detailed analysis include specific damage types
+        building_damage = detect_building_damage(before_img, after_img, contours, analysis_level)
+        road_damage = detect_road_damage(before_img, after_img, contours, analysis_level)
+        flooded_areas = detect_flooded_areas(before_img, after_img, analysis_level)
+        vegetation_loss = detect_vegetation_loss(before_img, after_img, analysis_level)
+    
+    # Calculate an overall severity score
+    severity_score = calculate_severity_score(
+        changed_percentage,
+        damaged_areas,
+        building_damage,
+        road_damage,
+        flooded_areas,
+        vegetation_loss
+    )
+    
+    # Create a damage overview
+    damage_overview = create_damage_overview(
+        damaged_areas,
+        building_damage,
+        road_damage,
+        flooded_areas,
+        vegetation_loss
+    )
+    
+    # Prepare raw data if requested
+    raw_data = None
+    if include_raw_data:
+        raw_data = {
+            "image_dimensions": before_img.shape,
+            "changed_pixels": int(changed_pixels),
+            "total_pixels": int(total_pixels),
+            "contour_count": len(contours),
+            # Add more raw data as needed
+        }
     
     # Prepare the response
     result = AnalysisResult(
@@ -187,18 +707,159 @@ def compare_images(before_img: np.ndarray, after_img: np.ndarray, comparison_id:
         after_image_url=f"/api/results/{after_filename}",
         difference_image_url=f"/api/results/{diff_filename}",
         changed_pixels_percentage=round(changed_percentage, 2),
+        severity_score=severity_score,
+        damage_overview=damage_overview,
         damaged_areas=damaged_areas,
         building_damage=building_damage,
         road_damage=road_damage,
         flooded_areas=flooded_areas,
         vegetation_loss=vegetation_loss,
-        created_at=datetime.now().isoformat()
+        created_at=datetime.now().isoformat(),
+        analysis_level=analysis_level,
+        region=region,
+        disaster_type=disaster_type,
+        raw_data=raw_data
     )
     
     return result
 
+def calculate_severity_score(
+    changed_percentage: float,
+    damaged_areas: List[Dict[str, Any]],
+    building_damage: List[Dict[str, Any]],
+    road_damage: List[Dict[str, Any]],
+    flooded_areas: List[Dict[str, Any]],
+    vegetation_loss: List[Dict[str, Any]]
+) -> float:
+    """
+    Calculate an overall severity score based on all damage metrics.
+    """
+    # Base score from changed pixels
+    base_score = min(changed_percentage * 0.1, 10.0)
+    
+    # Add scores based on damage severity
+    severity_weights = {
+        "Critical": 10.0,
+        "Collapsed": 10.0,
+        "Severe": 8.0,
+        "Severely Damaged": 8.0,
+        "High": 6.0,
+        "Moderate": 4.0,
+        "Partially Damaged": 4.0,
+        "Medium": 3.0,
+        "Low": 1.0,
+        "Minor": 1.0,
+        "Minor Damage": 1.0,
+        "Minor Change": 0.5
+    }
+    
+    # Count occurrences of each severity level
+    severity_counts = {level: 0 for level in severity_weights.keys()}
+    
+    # Check damaged areas
+    for area in damaged_areas:
+        if area["severity"] in severity_counts:
+            severity_counts[area["severity"]] += 1
+    
+    # Check building damage
+    for building in building_damage:
+        if building["severity"] in severity_counts:
+            severity_counts[building["severity"]] += 1
+    
+    # Check road damage
+    for road in road_damage:
+        if road["severity"] in severity_counts:
+            severity_counts[road["severity"]] += 1
+    
+    # Calculate additional score based on severity counts
+    severity_score = 0.0
+    for severity, count in severity_counts.items():
+        if count > 0 and severity in severity_weights:
+            # Log-scale score to prevent domination by large numbers of minor damage
+            severity_score += severity_weights[severity] * math.log1p(count)
+    
+    # Additional factors
+    # Flooded areas are significant
+    flood_factor = min(len(flooded_areas) * 2.0, 10.0)
+    
+    # Vegetation loss is less critical but still important
+    vegetation_factor = min(len(vegetation_loss) * 0.5, 5.0)
+    
+    # Combine all factors, normalize to 0-10 scale
+    total_score = base_score + severity_score + flood_factor + vegetation_factor
+    normalized_score = min(max(total_score / 10.0, 0.0), 10.0)
+    
+    return round(normalized_score, 1)
 
-def analyze_damaged_areas(contours: List, before_img: np.ndarray, after_img: np.ndarray, disaster_type: Optional[str]) -> List[Dict[str, Any]]:
+def create_damage_overview(
+    damaged_areas: List[Dict[str, Any]],
+    building_damage: List[Dict[str, Any]],
+    road_damage: List[Dict[str, Any]],
+    flooded_areas: List[Dict[str, Any]],
+    vegetation_loss: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Create a summary overview of all detected damage.
+    """
+    # Count occurrences of each damage type
+    damage_types = {}
+    for area in damaged_areas:
+        if "type" in area:
+            damage_type = area["type"]
+            if damage_type in damage_types:
+                damage_types[damage_type] += 1
+            else:
+                damage_types[damage_type] = 1
+    
+    # Severity distribution
+    severity_distribution = {
+        "Critical": 0,
+        "High": 0,
+        "Medium": 0,
+        "Low": 0
+    }
+    
+    for area in damaged_areas:
+        if "severity" in area and area["severity"] in severity_distribution:
+            severity_distribution[area["severity"]] += 1
+    
+    # Building damage summary
+    building_summary = {
+        "total": len(building_damage),
+        "collapsed": len([b for b in building_damage if b.get("severity") == "Collapsed"]),
+        "severe": len([b for b in building_damage if b.get("severity") == "Severely Damaged"]),
+        "partial": len([b for b in building_damage if b.get("severity") == "Partially Damaged"]),
+        "minor": len([b for b in building_damage if b.get("severity") == "Minor Damage"])
+    }
+    
+    # Road damage summary
+    road_summary = {
+        "total": len(road_damage),
+        "severe": len([r for r in road_damage if r.get("severity") == "Severe"]),
+        "moderate": len([r for r in road_damage if r.get("severity") == "Moderate"]),
+        "minor": len([r for r in road_damage if r.get("severity") == "Minor"])
+    }
+    
+    # Create overall summary
+    overview = {
+        "total_damaged_areas": len(damaged_areas),
+        "damage_types": damage_types,
+        "severity_distribution": severity_distribution,
+        "building_damage": building_summary,
+        "road_damage": road_summary,
+        "flooded_areas": len(flooded_areas),
+        "vegetation_loss": len(vegetation_loss)
+    }
+    
+    return overview
+
+def analyze_damaged_areas(
+    contours: List, 
+    before_img: np.ndarray, 
+    after_img: np.ndarray, 
+    disaster_type: Optional[str],
+    analysis_level: str
+) -> List[Dict[str, Any]]:
     """
     Analyze the detected changed areas to classify different types of damage.
     """
@@ -218,7 +879,7 @@ def analyze_damaged_areas(contours: List, before_img: np.ndarray, after_img: np.
         after_roi = after_img[y:y+h, x:x+w]
         
         # Calculate severity based on the difference magnitude
-        severity = calculate_severity(before_roi, after_roi)
+        severity = calculate_damage_severity(before_roi, after_roi)
         
         # Determine damage type based on color and texture analysis
         damage_type = classify_damage_type(before_roi, after_roi, disaster_type)
@@ -232,10 +893,23 @@ def analyze_damaged_areas(contours: List, before_img: np.ndarray, after_img: np.
             "confidence": round(min(0.9 + (area / 10000), 0.99), 2)  # Higher confidence for larger areas
         })
     
+    # For detailed analysis, add more information
+    if analysis_level == "detailed":
+        # Add more detailed classification or metrics
+        for area in damaged_areas:
+            # Add estimated recovery time based on severity
+            if area["severity"] == "Critical":
+                area["estimated_recovery"] = "6+ months"
+            elif area["severity"] == "High":
+                area["estimated_recovery"] = "3-6 months"
+            elif area["severity"] == "Medium":
+                area["estimated_recovery"] = "1-3 months"
+            else:
+                area["estimated_recovery"] = "<1 month"
+    
     return damaged_areas
 
-
-def calculate_severity(before_roi: np.ndarray, after_roi: np.ndarray) -> str:
+def calculate_damage_severity(before_roi: np.ndarray, after_roi: np.ndarray) -> str:
     """
     Calculate the severity of damage based on the difference between before and after regions.
     """
@@ -252,7 +926,6 @@ def calculate_severity(before_roi: np.ndarray, after_roi: np.ndarray) -> str:
         return "Medium"
     else:
         return "Low"
-
 
 def classify_damage_type(before_roi: np.ndarray, after_roi: np.ndarray, disaster_type: Optional[str]) -> str:
     """
@@ -276,22 +949,26 @@ def classify_damage_type(before_roi: np.ndarray, after_roi: np.ndarray, disaster
     # Detection logic based on color changes and disaster type
     blue_increase = after_mean[0] - before_mean[0]
     green_decrease = before_mean[1] - after_mean[1]
+    red_increase = after_mean[2] - before_mean[2]
     texture_diff = calculate_texture_difference(before_roi, after_roi)
     
     # Classification logic
     if disaster_type == "flood" or blue_increase > 30:
         return "Flooding"
-    elif texture_diff > 50 and correlation < 0.5:
+    elif disaster_type == "fire" or red_increase > 30:
+        return "Fire Damage"
+    elif disaster_type == "earthquake" and texture_diff > 50:
         return "Building Collapse"
+    elif texture_diff > 50 and correlation < 0.5:
+        return "Structural Damage"
     elif green_decrease > 20:
         return "Vegetation Loss"
     elif correlation < 0.3:
-        return "Structural Damage"
+        return "Severe Damage"
     elif correlation < 0.7:
         return "Surface Damage"
     else:
         return "Minor Change"
-
 
 def calculate_texture_difference(before_roi: np.ndarray, after_roi: np.ndarray) -> float:
     """
@@ -315,16 +992,16 @@ def calculate_texture_difference(before_roi: np.ndarray, after_roi: np.ndarray) 
     
     return texture_diff
 
-
-def detect_building_damage(before_img: np.ndarray, after_img: np.ndarray, contours: List) -> List[Dict[str, Any]]:
+def detect_building_damage(
+    before_img: np.ndarray, 
+    after_img: np.ndarray, 
+    contours: List,
+    analysis_level: str
+) -> List[Dict[str, Any]]:
     """
     Detect and analyze building damage in the images.
     """
     building_damage = []
-    
-    # Apply building segmentation (simplified for this example)
-    # In a real implementation, you would use a trained building segmentation model
-    # For demonstration, we'll use edge detection and contour analysis
     
     # Convert to grayscale
     before_gray = cv2.cvtColor(before_img, cv2.COLOR_BGR2GRAY)
@@ -366,18 +1043,42 @@ def detect_building_damage(before_img: np.ndarray, after_img: np.ndarray, contou
                     # Analyze severity
                     severity = calculate_building_damage_severity(before_roi, after_roi)
                     
-                    building_damage.append({
+                    # Basic building damage info
+                    building_info = {
                         "id": i + 1,
                         "coordinates": [x, y, x+w, y+h],
                         "severity": severity,
-                        "confidence": round(random.uniform(0.75, 0.95), 2)  # In a real implementation, this would be model confidence
-                    })
+                        "confidence": round(random.uniform(0.75, 0.95), 2)
+                    }
+                    
+                    # For detailed analysis, add more information
+                    if analysis_level == "detailed":
+                        # Determine damage type
+                        if severity == "Collapsed":
+                            damage_type = "Complete Structural Failure"
+                        elif severity == "Severely Damaged":
+                            damage_type = "Major Structural Damage"
+                        elif severity == "Partially Damaged":
+                            damage_type = "Exterior Damage"
+                        else:
+                            damage_type = "Superficial Damage"
+                        
+                        building_info["type"] = damage_type
+                        
+                        # Add estimated safety assessment
+                        if severity == "Collapsed" or severity == "Severely Damaged":
+                            building_info["safety"] = "Unsafe - No Entry"
+                        elif severity == "Partially Damaged":
+                            building_info["safety"] = "Restricted Entry"
+                        else:
+                            building_info["safety"] = "Inspection Needed"
+                    
+                    building_damage.append(building_info)
                     
                     # Break to avoid duplicate entries for the same building
                     break
     
     return building_damage
-
 
 def calculate_building_damage_severity(before_roi: np.ndarray, after_roi: np.ndarray) -> str:
     """
@@ -399,15 +1100,16 @@ def calculate_building_damage_severity(before_roi: np.ndarray, after_roi: np.nda
     else:
         return "Minor Damage"
 
-
-def detect_road_damage(before_img: np.ndarray, after_img: np.ndarray, contours: List) -> List[Dict[str, Any]]:
+def detect_road_damage(
+    before_img: np.ndarray, 
+    after_img: np.ndarray, 
+    contours: List,
+    analysis_level: str
+) -> List[Dict[str, Any]]:
     """
     Detect and analyze road damage in the images.
     """
     road_damage = []
-    
-    # In a real implementation, you would use a trained road segmentation model
-    # For simplicity, we'll use color-based segmentation and contour overlap analysis
     
     # Convert to HSV for better color segmentation
     before_hsv = cv2.cvtColor(before_img, cv2.COLOR_BGR2HSV)
@@ -459,17 +1161,33 @@ def detect_road_damage(before_img: np.ndarray, after_img: np.ndarray, contours: 
                 # Determine severity
                 severity = calculate_road_damage_severity(before_overlap, after_overlap)
                 
-                road_damage.append({
+                # Basic road damage info
+                road_info = {
                     "id": i + 1,
                     "coordinates": [overlap_x, overlap_y, overlap_x+overlap_w, overlap_y+overlap_h],
                     "severity": severity,
                     "confidence": round(random.uniform(0.8, 0.95), 2)
-                })
+                }
                 
-                # No break here as we want to find all damaged road sections
+                # For detailed analysis, add more information
+                if analysis_level == "detailed":
+                    # Estimate length of damaged road segment (simplified)
+                    pixel_length = max(overlap_w, overlap_h)
+                    # Convert to meters (example scale)
+                    length_meters = pixel_length * 0.5
+                    road_info["length"] = round(length_meters, 1)
+                    
+                    # Add passability assessment
+                    if severity == "Severe":
+                        road_info["passability"] = "Impassable"
+                    elif severity == "Moderate":
+                        road_info["passability"] = "Difficult Passage"
+                    else:
+                        road_info["passability"] = "Passable with Caution"
+                
+                road_damage.append(road_info)
     
     return road_damage
-
 
 def calculate_road_damage_severity(before_roi: np.ndarray, after_roi: np.ndarray) -> str:
     """
@@ -485,8 +1203,11 @@ def calculate_road_damage_severity(before_roi: np.ndarray, after_roi: np.ndarray
     else:
         return "Minor"
 
-
-def detect_flooded_areas(before_img: np.ndarray, after_img: np.ndarray) -> List[Dict[str, Any]]:
+def detect_flooded_areas(
+    before_img: np.ndarray, 
+    after_img: np.ndarray,
+    analysis_level: str
+) -> List[Dict[str, Any]]:
     """
     Detect and analyze flooded areas in the images.
     """
@@ -521,6 +1242,7 @@ def detect_flooded_areas(before_img: np.ndarray, after_img: np.ndarray) -> List[
             continue
         
         x, y, w, h = cv2.boundingRect(contour)
+        area = cv2.contourArea(contour)
         
         # Extract region for analysis
         after_roi = after_img[y:y+h, x:x+w]
@@ -528,15 +1250,31 @@ def detect_flooded_areas(before_img: np.ndarray, after_img: np.ndarray) -> List[
         # Estimate water depth based on color intensity
         water_depth = estimate_water_depth(after_roi)
         
-        flooded_areas.append({
+        # Basic flood area info
+        flood_info = {
             "id": i + 1,
             "coordinates": [x, y, x+w, y+h],
-            "waterDepth": water_depth,
+            "water_depth": water_depth,
+            "area": float(area),
             "confidence": round(random.uniform(0.85, 0.98), 2)
-        })
+        }
+        
+        # For detailed analysis, add more information
+        if analysis_level == "detailed":
+            # Convert area to square meters (example scale)
+            area_sqm = area * 0.25
+            flood_info["area_sqm"] = round(area_sqm, 1)
+            
+            # Add water flow direction (example)
+            # In a real implementation, this would use more sophisticated analysis
+            flood_info["flow_direction"] = random.choice(["North", "South", "East", "West"])
+            
+            # Add estimated flood timeline
+            flood_info["flood_timeline"] = random.choice(["Recent (< 24h)", "1-3 days", "> 3 days"])
+        
+        flooded_areas.append(flood_info)
     
     return flooded_areas
-
 
 def estimate_water_depth(water_roi: np.ndarray) -> str:
     """
@@ -559,8 +1297,11 @@ def estimate_water_depth(water_roi: np.ndarray) -> str:
     else:
         return ">3.0m"
 
-
-def detect_vegetation_loss(before_img: np.ndarray, after_img: np.ndarray) -> List[Dict[str, Any]]:
+def detect_vegetation_loss(
+    before_img: np.ndarray, 
+    after_img: np.ndarray,
+    analysis_level: str
+) -> List[Dict[str, Any]]:
     """
     Detect and analyze vegetation loss in the images.
     """
@@ -601,41 +1342,289 @@ def detect_vegetation_loss(before_img: np.ndarray, after_img: np.ndarray) -> Lis
         # In a real implementation, you would use GIS data for accurate measurement
         area_sqm = area * 0.25  # Example scale factor
         
-        vegetation_loss.append({
+        # Basic vegetation loss info
+        veg_info = {
             "id": i + 1,
             "coordinates": [x, y, x+w, y+h],
             "area": f"{area_sqm:.1f} sqm",
             "confidence": round(random.uniform(0.8, 0.95), 2)
-        })
+        }
+        
+        # For detailed analysis, add more information
+        if analysis_level == "detailed":
+            # Extract region for analysis
+            before_roi = before_img[y:y+h, x:x+w]
+            
+            # Analyze vegetation density (simplified)
+            green_channel = before_roi[:, :, 1]
+            mean_green = np.mean(green_channel)
+            
+            if mean_green > 150:
+                density = "Dense"
+            elif mean_green > 100:
+                density = "Moderate"
+            else:
+                density = "Sparse"
+            
+            veg_info["density"] = density
+            
+            # Add vegetation type (example)
+            # In a real implementation, this would use more sophisticated analysis
+            veg_info["vegetation_type"] = random.choice(["Forest", "Cropland", "Grassland", "Shrubland"])
+            
+            # Add ecological impact assessment
+            if area_sqm > 10000:  # 1 hectare
+                veg_info["ecological_impact"] = "Severe"
+            elif area_sqm > 5000:  # 0.5 hectare
+                veg_info["ecological_impact"] = "Moderate"
+            else:
+                veg_info["ecological_impact"] = "Low"
+        
+        vegetation_loss.append(veg_info)
     
     return vegetation_loss
-
 
 @app.get("/api/results/{filename}")
 async def get_result_image(filename: str):
     """
     Retrieve a result image by filename.
     """
-    file_path = os.path.join("results", filename)
-    if not os.path.exists(file_path):
+    file_path = RESULTS_DIR / filename
+    if not file_path.exists():
         raise HTTPException(status_code=404, detail="Result image not found")
     
-    return FileResponse(file_path)
+    return FileResponse(str(file_path))
 
+@app.get("/api/disaster-types")
+async def get_disaster_types():
+    """
+    Get available disaster types for analysis.
+    """
+    return {
+        "disaster_types": [
+            {"id": "flood", "name": "Flood", "description": "Flooding and water damage"},
+            {"id": "earthquake", "name": "Earthquake", "description": "Earthquake damage"},
+            {"id": "fire", "name": "Fire", "description": "Fire and burn damage"},
+            {"id": "hurricane", "name": "Hurricane/Cyclone", "description": "Hurricane, cyclone or typhoon damage"},
+            {"id": "landslide", "name": "Landslide", "description": "Landslide and mudslide damage"},
+            {"id": "tornado", "name": "Tornado", "description": "Tornado damage"},
+            {"id": "tsunami", "name": "Tsunami", "description": "Tsunami damage"},
+            {"id": "volcanic", "name": "Volcanic Eruption", "description": "Volcanic eruption damage"},
+            {"id": "other", "name": "Other", "description": "Other disaster types"}
+        ],
+        "analysis_levels": [
+            {"id": "basic", "name": "Basic", "description": "Quick overview of damage"},
+            {"id": "standard", "name": "Standard", "description": "Detailed damage assessment"},
+            {"id": "detailed", "name": "Detailed", "description": "In-depth analysis with additional metrics"}
+        ]
+    }
 
-# Add missing imports
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import random
+@app.get("/api/regions")
+async def get_regions():
+    """
+    Get available regions for context-specific analysis.
+    """
+    return {
+        "regions": [
+            {"id": "urban", "name": "Urban", "description": "Dense urban areas"},
+            {"id": "suburban", "name": "Suburban", "description": "Suburban residential areas"},
+            {"id": "rural", "name": "Rural", "description": "Rural and agricultural areas"},
+            {"id": "forest", "name": "Forest", "description": "Forested regions"},
+            {"id": "coastal", "name": "Coastal", "description": "Coastal areas"},
+            {"id": "mountainous", "name": "Mountainous", "description": "Mountainous terrain"},
+            {"id": "desert", "name": "Desert", "description": "Desert regions"},
+            {"id": "industrial", "name": "Industrial", "description": "Industrial zones"},
+            {"id": "agricultural", "name": "Agricultural", "description": "Agricultural land"}
+        ]
+    }
 
-# Mount static files directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.delete("/api/images/{image_id}")
+async def delete_image(image_id: str):
+    """
+    Delete an uploaded image.
+    """
+    file_path = UPLOAD_DIR / image_id
+    thumbnail_path = UPLOAD_DIR / "thumbnails" / image_id
+    
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    try:
+        os.remove(file_path)
+        if thumbnail_path.exists():
+            os.remove(thumbnail_path)
+        return {"status": "success", "message": "Image deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting image: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete image: {str(e)}")
+
+@app.delete("/api/analysis-result/{comparison_id}")
+async def delete_analysis_result(comparison_id: str):
+    """
+    Delete an analysis result.
+    """
+    # Check if the result exists
+    results_file = RESULTS_DIR / f"{comparison_id}.json"
+    if not results_file.exists():
+        raise HTTPException(status_code=404, detail="Analysis result not found")
+    
+    try:
+        # Delete the result file
+        os.remove(results_file)
+        
+        # Delete related images
+        for prefix in ["before", "after", "diff"]:
+            image_path = RESULTS_DIR / f"{comparison_id}_{prefix}.jpg"
+            if image_path.exists():
+                os.remove(image_path)
+        
+        # Remove from jobs if present
+        if comparison_id in analysis_jobs:
+            del analysis_jobs[comparison_id]
+        
+        return {"status": "success", "message": "Analysis result deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting analysis result: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete analysis result: {str(e)}")
+
+@app.get("/api/stats")
+async def get_stats():
+    """
+    Get system statistics.
+    """
+    try:
+        # Count uploaded images
+        upload_count = len([f for f in os.listdir(UPLOAD_DIR) if os.path.isfile(os.path.join(UPLOAD_DIR, f)) and not f.startswith('.')])
+        
+        # Count analysis results
+        result_count = len([f for f in os.listdir(RESULTS_DIR) if f.endswith('.json')])
+        
+        # Count active jobs
+        active_jobs = len([job for job in analysis_jobs.values() if job["status"] in ["queued", "processing"]])
+        
+        # System uptime (example)
+        uptime = "17h 42m"  # In a real implementation, this would be calculated
+        
+        return {
+            "upload_count": upload_count,
+            "result_count": result_count,
+            "active_jobs": active_jobs,
+            "uptime": uptime,
+            "disk_usage": {
+                "uploads": get_dir_size(UPLOAD_DIR),
+                "results": get_dir_size(RESULTS_DIR)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+def get_dir_size(path: Path) -> str:
+    """Get directory size in human-readable format"""
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+    
+    # Convert to human-readable format
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if total_size < 1024.0:
+            return f"{total_size:.1f} {unit}"
+        total_size /= 1024.0
+    return f"{total_size:.1f} TB"
 
 # Add a simple health check endpoint
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "version": "1.0.0"}
 
+# Add CRUD operations for saved analyses (optional)
+class SavedAnalysis(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    comparison_id: str
+    created_at: str
+    tags: List[str] = []
+
+@app.post("/api/saved-analyses")
+async def save_analysis(analysis: SavedAnalysis):
+    """
+    Save an analysis with a custom name and description.
+    """
+    try:
+        # Create directory if it doesn't exist
+        saved_dir = Path("saved_analyses")
+        saved_dir.mkdir(exist_ok=True)
+        
+        # Check if the referenced comparison exists
+        results_file = RESULTS_DIR / f"{analysis.comparison_id}.json"
+        if not results_file.exists():
+            raise HTTPException(status_code=404, detail="Referenced analysis not found")
+        
+        # Save the analysis metadata
+        saved_file = saved_dir / f"{analysis.id}.json"
+        with open(saved_file, "w") as f:
+            json.dump(analysis.dict(), f)
+        
+        return {"status": "success", "id": analysis.id}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error saving analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save analysis: {str(e)}")
+
+@app.get("/api/saved-analyses")
+async def get_saved_analyses():
+    """
+    Get all saved analyses.
+    """
+    try:
+        saved_dir = Path("saved_analyses")
+        if not saved_dir.exists():
+            return {"analyses": []}
+        
+        analyses = []
+        for file in saved_dir.glob("*.json"):
+            with open(file, "r") as f:
+                analyses.append(json.load(f))
+        
+        return {"analyses": analyses}
+    except Exception as e:
+        logger.error(f"Error getting saved analyses: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get saved analyses: {str(e)}")
+
+@app.get("/api/saved-analyses/{analysis_id}")
+async def get_saved_analysis(analysis_id: str):
+    """
+    Get a specific saved analysis.
+    """
+    try:
+        saved_file = Path("saved_analyses") / f"{analysis_id}.json"
+        if not saved_file.exists():
+            raise HTTPException(status_code=404, detail="Saved analysis not found")
+        
+        with open(saved_file, "r") as f:
+            analysis = json.load(f)
+        
+        # Get the actual analysis data
+        results_file = RESULTS_DIR / f"{analysis['comparison_id']}.json"
+        if results_file.exists():
+            with open(results_file, "r") as f:
+                analysis_data = json.load(f)
+                analysis["data"] = analysis_data
+        
+        return analysis
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error getting saved analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get saved analysis: {str(e)}")
+
+# Serve static files if needed
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
     import uvicorn
