@@ -281,7 +281,7 @@ const ImageComparisonTool = () => {
 
   // State for RAG
   const [useRAG, setUseRAG] = useState(true);
-  const [retrievalResults, setRetrievalResults] = useState<KnowledgeEntry[]>([]);
+  const [setRetrievalResults] = useState<KnowledgeEntry[]>([]);
   const [showRetrievalSources, setShowRetrievalSources] = useState(false);
 
   // State for NLP analysis
@@ -1499,7 +1499,7 @@ const ImageComparisonTool = () => {
             {/* API Key Input */}
             {showApiKeyInput && (
               <div className="p-3 border-b bg-gray-50">
-                <div className="text-sm mb-2">Enter your Groq API Key (starts with "gsk_")</div>
+                <div className="text-sm mb-2">Enter your Groq API Key (starts with gsk_)</div>
                 <div className="flex gap-2">
                   <Input
                     type="password"

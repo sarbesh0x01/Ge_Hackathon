@@ -43,6 +43,48 @@ import {
 } from "lucide-react";
 import { disasterData } from "@/app/lib/mockData";
 
+// Define proper types for the data structures
+interface MapLayer {
+  id: string;
+  name: string;
+  color: string;
+  count: number;
+  enabled: boolean;
+}
+
+interface DisasterPoint {
+  id: number;
+  type: string;
+  severity: string;
+  lat: number;
+  lng: number;
+  title: string;
+  description: string;
+}
+
+interface AlertZone {
+  id: string;
+  name: string;
+  type: string;
+  level: string;
+  color: string;
+  fillColor: string;
+  description: string;
+  coordinates: number[][];
+}
+
+interface HeatmapPoint {
+  lat: number;
+  lng: number;
+  intensity: number;
+}
+
+interface MapData {
+  points: DisasterPoint[];
+  polygons: AlertZone[];
+  heatmap: HeatmapPoint[];
+}
+
 // Load the map component dynamically with no SSR since Leaflet requires the browser
 const DisasterMap = dynamic(() => import('@/app/components/maps/DisasterMap'), {
   ssr: false,
@@ -57,7 +99,7 @@ const DisasterMap = dynamic(() => import('@/app/components/maps/DisasterMap'), {
 });
 
 // Create mock geospatial data
-const mockMapLayers = [
+const mockMapLayers: MapLayer[] = [
   { id: "buildings", name: "Buildings", color: "red", count: 124, enabled: true },
   { id: "roads", name: "Roads", color: "amber", count: 38, enabled: true },
   { id: "water", name: "Flooded Areas", color: "blue", count: 17, enabled: true },
@@ -68,8 +110,8 @@ const mockMapLayers = [
   { id: "resources", name: "Resource Depots", color: "orange", count: 9, enabled: false }
 ];
 
-// Create mock disaster points (we'll convert this to actual API data)
-const mockDisasterPoints = [
+// Create mock disaster points
+const mockDisasterPoints: DisasterPoint[] = [
   { id: 1, type: "building", severity: "critical", lat: 29.7625, lng: -95.3630, title: "Memorial Hospital", description: "Critical structural damage to east wing" },
   { id: 2, type: "building", severity: "high", lat: 29.7524, lng: -95.3640, title: "Downtown High School", description: "Severe roof damage and flooding" },
   { id: 3, type: "road", severity: "critical", lat: 29.7440, lng: -95.3751, title: "I-45 Bridge", description: "Complete collapse of north section" },
@@ -83,7 +125,7 @@ const mockDisasterPoints = [
 ];
 
 // Alert zones (polygon data)
-const mockAlertZones = [
+const mockAlertZones: AlertZone[] = [
   {
     id: "zone-1",
     name: "Downtown",
@@ -132,7 +174,7 @@ const mockAlertZones = [
 ];
 
 // Heatmap data for damage intensity
-const mockHeatmapData = [
+const mockHeatmapData: HeatmapPoint[] = [
   // Downtown cluster
   { lat: 29.758, lng: -95.369, intensity: 0.9 },
   { lat: 29.760, lng: -95.371, intensity: 0.8 },
@@ -156,24 +198,20 @@ export default function MapViewPage() {
   const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
   const [mapLayers, setMapLayers] = useState(mockMapLayers);
   const [mapView, setMapView] = useState("satellite");
-  const [showGrid, setShowGrid] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [overlayOpacity, setOverlayOpacity] = useState(70);
   const [disasterEvent, setDisasterEvent] = useState("hurricane_atlas");
 
   // State for actual map component props
   const [activeLayers, setActiveLayers] = useState<string[]>(["damage"]);
-  const [mapData, setMapData] = useState({
-    points: [] as any[],
-    polygons: [] as any[],
-    heatmap: [] as any[]
+  const [mapData, setMapData] = useState<MapData>({
+    points: [],
+    polygons: [],
+    heatmap: []
   });
-  const [isLoading, setIsLoading] = useState(true);
 
   // Simulate API data loading
   useEffect(() => {
-    setIsLoading(true);
-
     // In a real app, we would fetch data from APIs here
     // For now, we'll use a timeout to simulate network request
     const timer = setTimeout(() => {
@@ -182,7 +220,6 @@ export default function MapViewPage() {
         polygons: activeTab === "alerts" ? mockAlertZones : [],
         heatmap: activeTab === "damage" ? mockHeatmapData : []
       });
-      setIsLoading(false);
     }, 1000);
 
     return () => clearTimeout(timer);
@@ -202,43 +239,6 @@ export default function MapViewPage() {
       setActiveLayers(prev => prev.filter(id => id !== layerId));
     } else {
       setActiveLayers(prev => [...prev, layerId]);
-    }
-  };
-
-  const handleSelectPoint = (pointId: number) => {
-    setSelectedPoint(pointId === selectedPoint ? null : pointId);
-  };
-
-  const getPointIcon = (type: string) => {
-    switch (type) {
-      case "building":
-        return <Building className="h-5 w-5" />;
-      case "road":
-      case "water":
-        return <Droplets className="h-5 w-5" />;
-      case "emergency":
-        return <Ambulance className="h-5 w-5" />;
-      case "shelter":
-        return <Tent className="h-5 w-5" />;
-      case "resource":
-        return <Truck className="h-5 w-5" />;
-      default:
-        return <MapPin className="h-5 w-5" />;
-    }
-  };
-
-  const getPointColor = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return "text-red-500 bg-red-100 border-red-200";
-      case "high":
-        return "text-amber-500 bg-amber-100 border-amber-200";
-      case "medium":
-        return "text-yellow-500 bg-yellow-100 border-yellow-200";
-      case "low":
-        return "text-blue-500 bg-blue-100 border-blue-200";
-      default:
-        return "text-green-500 bg-green-100 border-green-200";
     }
   };
 

@@ -99,10 +99,6 @@ const ResponseChart: React.FC<ResponseChartProps> = ({ data, timeSeriesData }) =
     },
   ];
 
-  const callResponseData: CallResponseDataItem[] = [
-    { name: "Responded", value: emergencyResponse.callsResponded },
-    { name: "Pending", value: emergencyResponse.callsReceived - emergencyResponse.callsResponded }
-  ];
 
   // Calculate daily response efficiency change
   const efficiencyChanges: EfficiencyChangeItem[] = [];
