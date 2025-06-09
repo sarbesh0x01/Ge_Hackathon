@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Upload, Loader2 } from "lucide-react";
@@ -100,11 +101,15 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       {currentImage ? (
         <div className="relative">
           <Card className="overflow-hidden">
-            <img
-              src={`/api/images/${currentImage.image_id}`}
-              alt="Uploaded"
-              className="w-full h-48 object-cover"
-            />
+            <div className="relative w-full h-48">
+              <Image
+                src={`/api/images/${currentImage.image_id}`}
+                alt="Uploaded"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            </div>
           </Card>
           <div className="absolute top-2 right-2 flex gap-2">
             <Button

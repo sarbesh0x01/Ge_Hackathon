@@ -40,19 +40,17 @@ interface HeatmapData {
   intensity?: number;
 }
 
-// Extend Leaflet namespace to include heat layer
-declare global {
-  namespace L {
-    function heatLayer(
-      latlngs: [number, number, number][],
-      options?: {
-        radius?: number;
-        blur?: number;
-        maxZoom?: number;
-        gradient?: { [key: number]: string };
-      }
-    ): L.Layer;
-  }
+// Extend Leaflet types using module augmentation instead of namespace
+declare module "leaflet" {
+  function heatLayer(
+    latlngs: [number, number, number][],
+    options?: {
+      radius?: number;
+      blur?: number;
+      maxZoom?: number;
+      gradient?: { [key: number]: string };
+    }
+  ): L.Layer;
 }
 
 interface DisasterMapProps {

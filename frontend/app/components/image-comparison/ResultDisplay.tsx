@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from 'next/image';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -238,21 +239,25 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h3 className="text-lg font-medium mb-2">Before Disaster</h3>
-            <div className="border rounded-md overflow-hidden">
-              <img
+            <div className="border rounded-md overflow-hidden relative aspect-video">
+              <Image
                 src={`/api/results/${results.before_image_url.split('/').pop()}`}
                 alt="Before disaster"
-                className="w-full h-auto object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
             </div>
           </div>
           <div>
             <h3 className="text-lg font-medium mb-2">After Disaster</h3>
-            <div className="border rounded-md overflow-hidden">
-              <img
+            <div className="border rounded-md overflow-hidden relative aspect-video">
+              <Image
                 src={`/api/results/${results.after_image_url.split('/').pop()}`}
                 alt="After disaster"
-                className="w-full h-auto object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
             </div>
           </div>
@@ -260,11 +265,13 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
         <Card>
           <CardContent className="p-4">
             <h3 className="text-lg font-medium mb-2">Difference Visualization</h3>
-            <div className="border rounded-md overflow-hidden">
-              <img
+            <div className="border rounded-md overflow-hidden relative aspect-video">
+              <Image
                 src={`/api/results/${results.difference_image_url.split('/').pop()}`}
                 alt="Difference visualization"
-                className="w-full h-auto object-cover"
+                fill
+                className="object-cover"
+                sizes="100vw"
               />
             </div>
             <p className="text-sm text-gray-500 mt-2">
