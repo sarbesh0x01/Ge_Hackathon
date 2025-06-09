@@ -220,7 +220,13 @@ export default function AdvancedAnalysisPage() {
                 ></div>
 
                 {/* Building damage markers */}
-                {showLayers.buildings && buildingDamage.map((building) => (
+                {showLayers.buildings && buildingDamage
+                  .filter(building => {
+                    const passesFilter = selectedFilter === "all" || selectedFilter === "buildings" || selectedFilter === "critical";
+                    const passesThreshold = (building.confidence || 0.8) * 100 >= detectionThreshold;
+                    return passesFilter && passesThreshold;
+                  })
+                  .map((building) => (
                   <div
                     key={building.id}
                     className="absolute border-2 border-red-500 bg-red-500 bg-opacity-20 pointer-events-none"
@@ -238,7 +244,13 @@ export default function AdvancedAnalysisPage() {
                 ))}
 
                 {/* Road damage markers */}
-                {showLayers.roads && roadDamage.map((road) => (
+                {showLayers.roads && roadDamage
+                  .filter(road => {
+                    const passesFilter = selectedFilter === "all" || selectedFilter === "infrastructure";
+                    const passesThreshold = (road.confidence || 0.8) * 100 >= detectionThreshold;
+                    return passesFilter && passesThreshold;
+                  })
+                  .map((road) => (
                   <div
                     key={road.id}
                     className="absolute border-2 border-amber-500 bg-amber-500 bg-opacity-20 pointer-events-none"
@@ -256,7 +268,13 @@ export default function AdvancedAnalysisPage() {
                 ))}
 
                 {/* Flooded areas markers */}
-                {showLayers.water && floodedAreas.map((area) => (
+                {showLayers.water && floodedAreas
+                  .filter(area => {
+                    const passesFilter = selectedFilter === "all" || selectedFilter === "infrastructure";
+                    const passesThreshold = (area.confidence || 0.8) * 100 >= detectionThreshold;
+                    return passesFilter && passesThreshold;
+                  })
+                  .map((area) => (
                   <div
                     key={area.id}
                     className="absolute border-2 border-blue-500 bg-blue-500 bg-opacity-20 pointer-events-none"
@@ -274,7 +292,9 @@ export default function AdvancedAnalysisPage() {
                 ))}
 
                 {/* Vegetation loss markers */}
-                {showLayers.vegetation && vegetationLoss.map((loss) => (
+                {showLayers.vegetation && vegetationLoss
+                  .filter(loss => selectedFilter === "all")
+                  .map((loss) => (
                   <div
                     key={loss.id}
                     className="absolute border-2 border-green-500 bg-green-500 bg-opacity-20 pointer-events-none"
