@@ -23,7 +23,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  MapPin,
   Filter,
   Building,
   Droplets,
@@ -195,7 +194,6 @@ const mockHeatmapData: HeatmapPoint[] = [
 
 export default function MapViewPage() {
   const [activeTab, setActiveTab] = useState("damage");
-  const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
   const [mapLayers, setMapLayers] = useState(mockMapLayers);
   const [mapView, setMapView] = useState("satellite");
   const [showLabels, setShowLabels] = useState(true);
