@@ -48,7 +48,7 @@ import { mockImageAnalysis } from "@/app/lib/mockData";
 export default function AdvancedAnalysisPage() {
   const [activeTab, setActiveTab] = useState("visualization");
   const [overlayOpacity, setOverlayOpacity] = useState(70);
-  const [setSelectedFilter] = useState("all");
+  const [selectedFilter, setSelectedFilter] = useState("all");
   const [detectionThreshold, setDetectionThreshold] = useState(50);
   const [zoom, setZoom] = useState(100);
   const [showLayers, setShowLayers] = useState({
