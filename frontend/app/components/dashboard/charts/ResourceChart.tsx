@@ -151,10 +151,15 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value, name) => [
-                    value,
-                    name === "fulfillmentRate" ? "Fulfillment Rate (%)" : name.charAt(0).toUpperCase() + name.slice(1)
-                  ]}
+              formatter={(value, name) => [
+  value,
+  name === "fulfillmentRate"
+    ? "Fulfillment Rate (%)"
+    : typeof name === "string"
+      ? name.charAt(0).toUpperCase() + name.slice(1)
+      : name
+]}
+
                 />
                 <Legend />
                 <Bar dataKey="available" stackId="a" fill="#3b82f6" name="Available" />

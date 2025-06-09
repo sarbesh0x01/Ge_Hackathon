@@ -278,10 +278,11 @@ const ImageComparisonTool = () => {
 
   // State for export progress
   const [isExporting, setIsExporting] = useState(false);
+  // Add this with your other useState declarations at the top of the component
+const [, setRetrievalResults] = useState<KnowledgeEntry[]>([]);
 
   // State for RAG
   const [useRAG, setUseRAG] = useState(true);
-  const [setRetrievalResults] = useState<KnowledgeEntry[]>([]);
   const [showRetrievalSources, setShowRetrievalSources] = useState(false);
 
   // State for NLP analysis
@@ -321,7 +322,8 @@ const ImageComparisonTool = () => {
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
   // Add language preference state and modal control
-  const [preferredLanguage, setPreferredLanguage] = useState<"en" | "ne" | "auto">("auto");
+// Add language preference state and modal control
+const [preferredLanguage, setPreferredLanguage] = useState<"en" | "ne" | "auto">("auto");
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   // State for emergency contacts modal
@@ -581,7 +583,8 @@ const ImageComparisonTool = () => {
     setAffectedAssets([]);
     setIsDetailedViewOpen(false);
     setDetailedData(null);
-    setRetrievalResults([]);
+setRetrievalResults([]);
+
   };
 
   // Handle View Detailed Analysis button click
@@ -776,7 +779,7 @@ const ImageComparisonTool = () => {
         systemContent += `\n\nThe user has uploaded before and after disaster images. The images show an area affected by a ${disasterType}.`;
 
         // Add specific instructions for Nepal
-        if (isNepali || preferredLanguage === "ne") {
+        if (isNepali || preferredLanguage === "en") {
           systemContent += `\n\nनेपालको सन्दर्भमा विशेष ध्यान दिनुहोस् र स्थानीय भवन प्रकार, भौगोलिक चुनौतीहरू, र उपलब्ध संसाधनहरू बारे विचार गर्नुहोस्।`;
         } else {
           systemContent += `\n\nPay special attention to the Nepali context, considering local building types, geographical challenges, and available resources when relevant.`;
@@ -1185,7 +1188,10 @@ const ImageComparisonTool = () => {
                 {/* View Mode */}
                 <div className="space-y-2">
                   <div className="font-medium text-sm">View Mode / हेर्ने मोड</div>
-                  <Tabs value={viewMode} onValueChange={(value: "slider" | "side-by-side" | "overlay") => setViewMode(value)}>
+<Tabs
+  value={viewMode}
+  onValueChange={(value) => setViewMode(value as "slider" | "side-by-side" | "overlay")}
+/>
                     <TabsList className="w-full">
                       <TabsTrigger value="slider" className="flex-1">
                         <ImageIcon className="h-4 w-4 mr-1" />
@@ -1200,7 +1206,6 @@ const ImageComparisonTool = () => {
                         Overlay
                       </TabsTrigger>
                     </TabsList>
-                  </Tabs>
                 </div>
               </div>
 

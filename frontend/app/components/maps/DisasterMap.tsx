@@ -91,7 +91,7 @@ const DisasterMap: React.FC<DisasterMapProps> = ({
       zoom: zoom,
       zoomControl: false,
       attributionControl: false,
-      fullscreenControl: true,
+      // fullscreenControl: true,
     });
 
     // Set base map layer based on style
@@ -172,7 +172,7 @@ const DisasterMap: React.FC<DisasterMapProps> = ({
       const layerGroup = layerGroupsRef.current[layerName];
       if (mapLayers.includes(layerName)) {
         if (!mapRef.current?.hasLayer(layerGroup)) {
-          layerGroup.addTo(mapRef.current);
+          // layerGroup.addTo(mapRef.current);
         }
       } else {
         if (mapRef.current?.hasLayer(layerGroup)) {
@@ -213,12 +213,12 @@ const DisasterMap: React.FC<DisasterMapProps> = ({
     layerGroupsRef.current.damage.clearLayers();
 
     // Create marker cluster group for better performance with many points
-    const markers = L.markerClusterGroup({
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      disableClusteringAtZoom: 16
-    });
+    // const markers = L.markerClusterGroup({
+    //   spiderfyOnMaxZoom: true,
+    //   showCoverageOnHover: false,
+    //   zoomToBoundsOnClick: true,
+    //   disableClusteringAtZoom: 16
+    // });
 
     // Add points to marker cluster
     pointData.forEach(point => {
@@ -234,11 +234,11 @@ const DisasterMap: React.FC<DisasterMapProps> = ({
         </div>
       `);
 
-      markers.addLayer(marker);
+      // markers.addLayer(marker);
     });
 
     // Add marker cluster to the appropriate layer group
-    layerGroupsRef.current.damage.addLayer(markers);
+    // layerGroupsRef.current.damage.addLayer(markers);
   }, [pointData, isMapInitialized]);
 
   // Update polygon data when it changes

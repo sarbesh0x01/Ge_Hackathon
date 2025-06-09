@@ -2,11 +2,11 @@
 
 import React from "react";
 import { disasterData, timeSeriesData } from "@/app/lib/mockData";
-import DashboardStats from "@/app/components/dashboard/DashboardStats";
+// import DashboardStats from "@/app/components/dashboard/DashboardStats";
 import DamageChart from "@/app/components/dashboard/charts/DamageChart";
 import ImpactChart from "@/app/components/dashboard/charts/ImpactChart";
 import ResponseChart from "@/app/components/dashboard/charts/ResponseChart";
-import ResourceChart from "@/app/components/dashboard/charts/ResourceChart";
+// import ResourceChart from "@/app/components/dashboard/charts/ResourceChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Download, Filter } from "lucide-react";
@@ -48,7 +48,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Stats */}
-      <DashboardStats data={disasterData} />
+      {/* <DashboardStats data={disasterData} /> */}
 
       {/* Charts Section */}
       <Tabs defaultValue="damage" className="w-full">
@@ -167,7 +167,7 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="resources">
-          <ResourceChart data={disasterData} />
+          {/* <ResourceChart data={disasterData} /> */}
         </TabsContent>
       </Tabs>
 

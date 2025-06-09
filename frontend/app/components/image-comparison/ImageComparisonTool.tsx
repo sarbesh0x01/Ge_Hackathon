@@ -462,28 +462,29 @@ const ImageComparisonTool = ({ defaultApiKey = "" }) => {
     // Clean up interval on component unmount
     return () => clearInterval(statusInterval);
   };
-
   // Process the analysis result from the API
-  const processAnalysisResult = (resultData: BackendAnalysisResult) => {
-    // Convert backend structure to frontend structure
-    const result: AnalysisResult = {
-      comparison_id: resultData.comparison_id,
-      damagePercentage: resultData.changed_pixels_percentage || 0,
-      severity: getSeverityLevel(resultData.severity_score || 5),
-      affectedAreas: extractAffectedAreas(resultData),
-      recommendations: getRecommendations(resultData, disasterType),
-      building_damage: resultData.building_damage || [],
-      road_damage: resultData.road_damage || [],
-      flooded_areas: resultData.flooded_areas || [],
-      vegetation_loss: resultData.vegetation_loss || [],
-      created_at: resultData.created_at || new Date().toISOString()
-    };
+const processAnalysisResult = async (resultData: BackendAnalysisResult) => {
+  const recommendations = await getRecommendations(resultData, disasterType);
 
-    setAnalysisResults(result);
-
-    // Update messages in NLP tab with the analysis information
-    updateNLPWithAnalysisResults(result);
+  const result: AnalysisResult = {
+    comparison_id: resultData.comparison_id,
+    damagePercentage: resultData.changed_pixels_percentage || 0,
+    severity: getSeverityLevel(resultData.severity_score || 5),
+    affectedAreas: extractAffectedAreas(resultData),
+    recommendations, // ✅ resolved string[]
+    building_damage: resultData.building_damage || [],
+    road_damage: resultData.road_damage || [],
+    flooded_areas: resultData.flooded_areas || [],
+    vegetation_loss: resultData.vegetation_loss || [],
+    created_at: resultData.created_at || new Date().toISOString()
   };
+
+  setAnalysisResults(result);
+  updateNLPWithAnalysisResults(result);
+};
+
+
+
 
   // Map severity score to severity level
   const getSeverityLevel = (severityScore: number): "low" | "medium" | "high" => {
@@ -494,7 +495,8 @@ const ImageComparisonTool = ({ defaultApiKey = "" }) => {
 
   // Extract affected areas from the backend response
   const extractAffectedAreas = (resultData: BackendAnalysisResult): string[] => {
-    const areas = [];
+    const areas: string[] = [];
+
 
     // Check building damage
     if (resultData.building_damage && resultData.building_damage.length > 0) {
@@ -1571,7 +1573,10 @@ Analysis results:
                 {/* View Mode */}
                 <div className="space-y-2">
                   <div className="font-medium text-sm">View Mode</div>
-                  <Tabs value={viewMode} onValueChange={(value: "slider" | "side-by-side" | "overlay") => setViewMode(value)}>
+<Tabs
+  value={viewMode}
+  onValueChange={(value: string) => setViewMode(value as "slider" | "side-by-side" | "overlay")}
+>
                     <TabsList className="w-full">
                       <TabsTrigger value="slider" className="flex-1">
                         <ImageIcon className="h-4 w-4 mr-1" />

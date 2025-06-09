@@ -7,12 +7,6 @@ import { AlertTriangle, HelpCircle, LinkIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function ImageComparisonPage() {
-  // Get the Groq API key from environment variables
-  const groqApiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY || "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";
-
-  // Helpful debugging for environment variables
-  console.log("API Key available:", groqApiKey ? "Yes (starts with " + groqApiKey.substring(0, 4) + ")" : "No");
-
   return (
     <div className="space-y-6">
       <div>
@@ -24,7 +18,7 @@ export default function ImageComparisonPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
-          <ImageComparisonTool defaultApiKey={groqApiKey} />
+          <ImageComparisonTool />
         </div>
 
         <div className="space-y-6">

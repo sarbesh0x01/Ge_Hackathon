@@ -57,7 +57,15 @@ const Navbar = () => {
     setEmergencyMode(!emergencyMode);
   };
 
-  const NavItem = ({ href, icon, label, alert = false }) => {
+
+  type NavItemProps = {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  alert?: boolean;
+};
+
+  const NavItem:React.FC<NavItemProps> = ({ href, icon, label, alert = false }) => {
     return (
       <Link
         href={href}

@@ -360,8 +360,8 @@ export default function MapViewPage() {
             overlayOpacity={overlayOpacity}
             mapStyle={mapView}
             showLabels={showLabels}
-            pointData={mapData.points}
-            polygonData={mapData.polygons}
+            // pointData={mapData.points}
+            // polygonData={mapData.polygons}
             heatmapData={mapData.heatmap}
           />
 

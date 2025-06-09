@@ -154,55 +154,74 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
     );
   };
 
-  // Render damage cards
-  const renderDamageCards = () => {
-    const categories = {
-      building_damage: { title: "Building Damage", color: "bg-red-50", icon: "building" },
-      road_damage: { title: "Road Damage", color: "bg-amber-50", icon: "road" },
-      flooded_areas: { title: "Flooded Areas", color: "bg-blue-50", icon: "water" },
-      vegetation_loss: { title: "Vegetation Loss", color: "bg-green-50", icon: "tree" }
-    };
 
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {Object.entries(categories).map(([key, { title, color }]) => (
+const renderDamageCards = () => {
+  const categories = {
+    building_damage: { title: "Building Damage", color: "bg-red-50", icon: "building" },
+    road_damage: { title: "Road Damage", color: "bg-amber-50", icon: "road" },
+    flooded_areas: { title: "Flooded Areas", color: "bg-blue-50", icon: "water" },
+    vegetation_loss: { title: "Vegetation Loss", color: "bg-green-50", icon: "tree" }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {Object.entries(categories).map(([key, { title, color }]) => {
+        const raw = results[key as keyof AnalysisResults];
+        const items = Array.isArray(raw)
+          ? (raw as Array<BuildingDamage | RoadDamage | FloodedArea | VegetationLoss>)
+          : [];
+
+        return (
           <Card key={key} className={`overflow-hidden ${color}`}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium">{title}</h3>
-                <Badge variant="secondary">
-                  {results[key as keyof AnalysisResults].length}
-                </Badge>
+                <Badge variant="secondary">{items.length}</Badge>
               </div>
-              {results[key as keyof AnalysisResults].length > 0 ? (
+
+              {items.length > 0 ? (
                 <div className="max-h-40 overflow-y-auto">
-                  {(results[key as keyof AnalysisResults] as Array<BuildingDamage | RoadDamage | FloodedArea | VegetationLoss>).map((item) => (
-                    <div key={item.id} className="flex justify-between items-center py-1 border-b last:border-0">
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex justify-between items-center py-1 border-b last:border-0"
+                    >
                       <div className="flex items-center">
-                        <Badge variant={item.confidence > 0.9 ? "default" : "outline"} className="mr-2">
+                        <Badge
+                          variant={item.confidence > 0.9 ? "default" : "outline"}
+                          className="mr-2"
+                        >
                           {Math.round(item.confidence * 100)}%
                         </Badge>
                         <span className="text-sm">
-                          {'severity' in item ? item.severity : 
-                           'water_depth' in item ? item.water_depth : 
-                           'density' in item ? item.density : ''}
+                          {"severity" in item
+                            ? item.severity
+                            : "water_depth" in item
+                            ? item.water_depth
+                            : "density" in item
+                            ? item.density
+                            : ""}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        ID: {item.id}
-                      </span>
+                      <span className="text-xs text-gray-500">ID: {item.id}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No {title.toLowerCase()} detected</p>
+                <p className="text-sm text-gray-500">
+                  No {title.toLowerCase()} detected
+                </p>
               )}
             </CardContent>
           </Card>
-        ))}
-      </div>
-    );
-  };
+        );
+      })}
+    </div>
+  );
+};
+
+
+
 
   // Render severity distribution
   const renderSeverityDistribution = () => {
