@@ -6,13 +6,91 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2, Download, FileText } from "lucide-react";
+import { CheckCircle2, Download, FileText } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
+// Type definitions for result data
+interface ImageData {
+  image_id: string;
+  url?: string;
+  filename?: string;
+  size?: number;
+  type?: string;
+  uploadedAt?: string;
+}
+
+interface DamagedArea {
+  id: string;
+  confidence: number;
+  severity: "Critical" | "High" | "Medium" | "Low";
+  type: string;
+  area: number | string;
+  estimated_recovery?: string;
+}
+
+interface BuildingDamage {
+  id: string;
+  confidence: number;
+  severity: "Critical" | "High" | "Medium" | "Low";
+}
+
+interface RoadDamage {
+  id: string;
+  confidence: number;
+  severity?: string;
+}
+
+interface FloodedArea {
+  id: string;
+  confidence: number;
+  water_depth: string;
+}
+
+interface VegetationLoss {
+  id: string;
+  confidence: number;
+  density: string;
+}
+
+interface SeverityDistribution {
+  Critical: number;
+  High: number;
+  Medium: number;
+  Low: number;
+}
+
+interface DamageTypes {
+  [key: string]: number;
+}
+
+interface DamageOverview {
+  severity_distribution: SeverityDistribution;
+  damage_types?: DamageTypes;
+}
+
+interface AnalysisResults {
+  changed_pixels_percentage: number;
+  severity_score: number;
+  damaged_areas: DamagedArea[];
+  building_damage: BuildingDamage[];
+  road_damage: RoadDamage[];
+  flooded_areas: FloodedArea[];
+  vegetation_loss: VegetationLoss[];
+  damage_overview: DamageOverview;
+  before_image_url: string;
+  after_image_url: string;
+  difference_image_url: string;
+  comparison_id: string;
+  created_at: string;
+  analysis_level: string;
+  region?: string;
+  disaster_type?: string;
+}
+
 interface ResultDisplayProps {
-  beforeImage: any;
-  afterImage: any;
-  results: any;
+  beforeImage: ImageData;
+  afterImage: ImageData;
+  results: AnalysisResults;
   onReset: () => void;
 }
 
@@ -94,18 +172,22 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium">{title}</h3>
                 <Badge variant="secondary">
-                  {results[key].length}
+                  {results[key as keyof AnalysisResults].length}
                 </Badge>
               </div>
-              {results[key].length > 0 ? (
+              {results[key as keyof AnalysisResults].length > 0 ? (
                 <div className="max-h-40 overflow-y-auto">
-                  {results[key].map((item: any) => (
+                  {(results[key as keyof AnalysisResults] as Array<BuildingDamage | RoadDamage | FloodedArea | VegetationLoss>).map((item) => (
                     <div key={item.id} className="flex justify-between items-center py-1 border-b last:border-0">
                       <div className="flex items-center">
                         <Badge variant={item.confidence > 0.9 ? "default" : "outline"} className="mr-2">
                           {Math.round(item.confidence * 100)}%
                         </Badge>
-                        <span className="text-sm">{item.severity || item.water_depth || item.density || ''}</span>
+                        <span className="text-sm">
+                          {'severity' in item ? item.severity : 
+                           'water_depth' in item ? item.water_depth : 
+                           'density' in item ? item.density : ''}
+                        </span>
                       </div>
                       <span className="text-xs text-gray-500">
                         ID: {item.id}
@@ -130,7 +212,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
         <CardContent className="p-4">
           <h3 className="font-medium mb-3">Damage Severity Distribution</h3>
           <div className="space-y-4">
-            {Object.entries(results.damage_overview.severity_distribution).map(([severity, count]: [string, any]) => (
+            {Object.entries(results.damage_overview.severity_distribution).map(([severity, count]: [string, number]) => (
               <div key={severity} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span>{severity}</span>
@@ -239,7 +321,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
           <CardContent className="p-4">
             <h3 className="text-lg font-medium mb-2">Damage Type Distribution</h3>
             <div className="space-y-2">
-              {Object.entries(results.damage_overview.damage_types || {}).map(([type, count]: [string, any]) => (
+              {Object.entries(results.damage_overview.damage_types || {}).map(([type, count]: [string, number]) => (
                 <div key={type} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>{type}</span>
@@ -257,7 +339,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
           <CardContent className="p-4">
             <h3 className="text-lg font-medium mb-2">All Detected Damages</h3>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {results.damaged_areas.map((area: any) => (
+              {results.damaged_areas.map((area: DamagedArea) => (
                 <div key={area.id} className="border p-3 rounded-md">
                   <div className="flex justify-between">
                     <span className="font-medium">Area #{area.id}</span>

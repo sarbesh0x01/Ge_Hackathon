@@ -1,12 +1,39 @@
 "use client";
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+
+// Type definitions for damage data
+interface DamageType {
+  type: string;
+  percentage: number;
+}
+
+interface BuildingDamage {
+  types: DamageType[];
+}
+
+interface InfrastructureDamage {
+  types: DamageType[];
+}
+
+interface AgriculturalDamage {
+  types: DamageType[];
+}
+
+interface DamageAssessment {
+  buildingDamage: BuildingDamage;
+  infrastructureDamage: InfrastructureDamage;
+  agriculturalDamage: AgriculturalDamage;
+}
+
+interface DamageChartData {
+  damageAssessment: DamageAssessment;
+}
 
 interface DamageChartProps {
-  data: any;
+  data: DamageChartData;
 }
 
 const DamageChart: React.FC<DamageChartProps> = ({ data }) => {
@@ -35,7 +62,7 @@ const DamageChart: React.FC<DamageChartProps> = ({ data }) => {
             <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>
             <TabsTrigger value="agriculture">Agriculture</TabsTrigger>
           </TabsList>
-
+          
           <TabsContent value="buildings" className="h-80 pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -50,7 +77,7 @@ const DamageChart: React.FC<DamageChartProps> = ({ data }) => {
                   dataKey="percentage"
                   nameKey="type"
                 >
-                  {buildingDamageData.map((entry: any, index: number) => (
+                  {buildingDamageData.map((entry: DamageType, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS.building[index % COLORS.building.length]} />
                   ))}
                 </Pie>
@@ -59,7 +86,7 @@ const DamageChart: React.FC<DamageChartProps> = ({ data }) => {
               </PieChart>
             </ResponsiveContainer>
           </TabsContent>
-
+          
           <TabsContent value="infrastructure" className="h-80 pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -75,7 +102,7 @@ const DamageChart: React.FC<DamageChartProps> = ({ data }) => {
               </BarChart>
             </ResponsiveContainer>
           </TabsContent>
-
+          
           <TabsContent value="agriculture" className="h-80 pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart

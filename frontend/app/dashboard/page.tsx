@@ -2,7 +2,6 @@
 
 import React from "react";
 import { disasterData, timeSeriesData } from "@/app/lib/mockData";
-import DashboardCard from "@/app/components/dashboard/DashboardCard";
 import DashboardStats from "@/app/components/dashboard/DashboardStats";
 import DamageChart from "@/app/components/dashboard/charts/DamageChart";
 import ImpactChart from "@/app/components/dashboard/charts/ImpactChart";
@@ -11,6 +10,17 @@ import ResourceChart from "@/app/components/dashboard/charts/ResourceChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Download, Filter } from "lucide-react";
+
+// Type definitions for better type safety
+interface DamageType {
+  type: string;
+  percentage: number;
+}
+
+interface CriticalInfrastructure {
+  type: string;
+  affectedPercentage: number;
+}
 
 export default function DashboardPage() {
   const { disasterInfo } = disasterData;
@@ -57,7 +67,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-lg border p-4">
                 <h3 className="text-lg font-medium mb-3">Damage Hotspots</h3>
                 <div className="space-y-3">
-                  {disasterData.damageAssessment.buildingDamage.types.map((item: any, index: number) => (
+                  {disasterData.damageAssessment.buildingDamage.types.map((item: DamageType, index: number) => (
                     <div key={index} className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <span className={`w-3 h-3 rounded-full ${index === 0 ? "bg-red-500" :
@@ -106,7 +116,7 @@ export default function DashboardPage() {
               <div className="bg-white rounded-lg border p-4">
                 <h3 className="text-lg font-medium mb-3">Critical Infrastructure</h3>
                 <div className="space-y-3">
-                  {disasterData.impactAnalysis.criticalInfrastructure.map((item: any, index: number) => (
+                  {disasterData.impactAnalysis.criticalInfrastructure.map((item: CriticalInfrastructure, index: number) => (
                     <div key={index} className="flex justify-between items-center">
                       <span>{item.type}</span>
                       <div className="flex items-center gap-2">

@@ -53,13 +53,13 @@ export default function ImageComparisonPage() {
                 <div className="p-2 rounded-md border bg-gray-50 text-sm">
                   <div className="font-medium">3. Run Analysis</div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Click "Analyze Changes" for automated damage detection
+                    Click &quot;Analyze Changes&quot; for automated damage detection
                   </p>
                 </div>
                 <div className="p-2 rounded-md border bg-gray-50 text-sm">
                   <div className="font-medium">4. AI Assessment</div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Use "AI Analysis" for detailed insights powered by Groq
+                    Use &quot;AI Analysis&quot; for detailed insights powered by Groq
                   </p>
                 </div>
               </div>

@@ -1,8 +1,6 @@
 "use client";
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DashboardMetric from "./DashboardMetric";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -17,14 +15,74 @@ import {
   ArrowRight
 } from "lucide-react";
 
+// Type definitions for the data structure
+interface DisasterInfo {
+  name: string;
+  severity: string;
+  type: string;
+  location: string;
+  date: string;
+}
+
+interface BuildingDamage {
+  percentage: number;
+}
+
+interface DamageAssessment {
+  buildingDamage: BuildingDamage;
+}
+
+interface ImpactAnalysis {
+  peopleAffected: number;
+}
+
+interface EmergencyResponse {
+  responseRate: number;
+  averageResponseTime: number;
+}
+
+interface WaterQuality {
+  status: string;
+  hazardLevel: string;
+}
+
+interface WildlifeImpact {
+  status: string;
+  habitatsAffected: number;
+}
+
+interface EnvironmentalImpact {
+  waterQuality: WaterQuality;
+  wildlifeImpact: WildlifeImpact;
+}
+
+interface HighRiskArea {
+  name: string;
+  population: number;
+  riskLevel: "Extreme" | "High" | "Medium";
+}
+
+interface VulnerabilityAnalysis {
+  highRiskAreas: HighRiskArea[];
+}
+
+interface DashboardData {
+  disasterInfo: DisasterInfo;
+  damageAssessment: DamageAssessment;
+  impactAnalysis: ImpactAnalysis;
+  emergencyResponse: EmergencyResponse;
+  environmentalImpact: EnvironmentalImpact;
+  vulnerabilityAnalysis: VulnerabilityAnalysis;
+}
+
 interface DashboardStatsProps {
-  data: any;
+  data: DashboardData;
 }
 
 const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
   const { disasterInfo, damageAssessment, impactAnalysis, emergencyResponse, environmentalImpact } = data;
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
     } else if (num >= 1000) {
@@ -128,21 +186,23 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ data }) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {data.vulnerabilityAnalysis.highRiskAreas.map((area: any, index: number) => (
+            {data.vulnerabilityAnalysis.highRiskAreas.map((area: HighRiskArea, index: number) => (
               <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-gray-50">
                 <div className="flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full ${area.riskLevel === "Extreme" ? "bg-red-500" :
-                      area.riskLevel === "High" ? "bg-amber-500" :
-                        "bg-yellow-500"
-                    }`}></span>
+                  <span className={`w-3 h-3 rounded-full ${
+                    area.riskLevel === "Extreme" ? "bg-red-500" :
+                    area.riskLevel === "High" ? "bg-amber-500" :
+                    "bg-yellow-500"
+                  }`}></span>
                   <span className="font-medium">{area.name}</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-600">{area.population.toLocaleString()} affected</span>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${area.riskLevel === "Extreme" ? "bg-red-100 text-red-800" :
-                      area.riskLevel === "High" ? "bg-amber-100 text-amber-800" :
-                        "bg-yellow-100 text-yellow-800"
-                    }`}>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    area.riskLevel === "Extreme" ? "bg-red-100 text-red-800" :
+                    area.riskLevel === "High" ? "bg-amber-100 text-amber-800" :
+                    "bg-yellow-100 text-yellow-800"
+                  }`}>
                     {area.riskLevel}
                   </span>
                   <ArrowRight className="h-4 w-4 text-gray-400" />

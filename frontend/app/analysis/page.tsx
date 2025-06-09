@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -41,8 +40,7 @@ import {
   CameraOff,
   Sparkles,
   PlusCircle,
-  FileText,
-  Camera
+  FileText
 } from "lucide-react";
 
 import { mockImageAnalysis } from "@/app/lib/mockData";
@@ -50,7 +48,7 @@ import { mockImageAnalysis } from "@/app/lib/mockData";
 export default function AdvancedAnalysisPage() {
   const [activeTab, setActiveTab] = useState("visualization");
   const [overlayOpacity, setOverlayOpacity] = useState(70);
-  const [selectedFilter, setSelectedFilter] = useState("all");
+  const [setSelectedFilter] = useState("all");
   const [detectionThreshold, setDetectionThreshold] = useState(50);
   const [zoom, setZoom] = useState(100);
   const [showLayers, setShowLayers] = useState({

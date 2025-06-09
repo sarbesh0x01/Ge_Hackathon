@@ -3,8 +3,7 @@
 import React from "react";
 import DisasterChatbot from "@/app/components/DisasterChatbot";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertTriangle, Bot, HelpCircle, LinkIcon, Phone } from "lucide-react";
+import { AlertTriangle, HelpCircle, LinkIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function ChatPage() {

@@ -22,7 +22,7 @@ import {
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [alertCount, setAlertCount] = useState(3);
+  const [alertCount] = useState(3);
   const [emergencyMode, setEmergencyMode] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
 

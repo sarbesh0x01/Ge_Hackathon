@@ -3,11 +3,21 @@
 import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
+
+// Type definitions for image data
+interface ImageData {
+  image_id: string;
+  url?: string;
+  filename?: string;
+  size?: number;
+  type?: string;
+  uploadedAt?: string;
+}
 
 interface ImageUploaderProps {
-  onImageUpload: (imageData: any) => void;
-  currentImage: any | null;
+  onImageUpload: (imageData: ImageData | null) => void;
+  currentImage: ImageData | null;
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
@@ -64,7 +74,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         throw new Error('Image upload failed');
       }
 
-      const data = await response.json();
+      const data: ImageData = await response.json();
       onImageUpload(data);
     } catch (error) {
       console.error('Error uploading image:', error);

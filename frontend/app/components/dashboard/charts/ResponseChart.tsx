@@ -8,8 +8,6 @@ import {
   Line,
   BarChart,
   Bar,
-  AreaChart,
-  Area,
   ComposedChart,
   ResponsiveContainer,
   XAxis,
@@ -19,22 +17,71 @@ import {
   Legend
 } from 'recharts';
 
+// Type definitions for response data
+interface ResourceAllocation {
+  personnel: number;
+  vehicles: number;
+  equipment: number;
+  efficiency: number;
+}
+
+interface EmergencyResponse {
+  resourceAllocation: ResourceAllocation;
+  callsResponded: number;
+  callsReceived: number;
+  responseRate: number;
+  averageResponseTime: number;
+}
+
+interface ResponseChartData {
+  emergencyResponse: EmergencyResponse;
+}
+
+interface TimeSeriesData {
+  dates: string[];
+  responseEfficiency: number[];
+  rescuedPeople: number[];
+}
+
 interface ResponseChartProps {
-  data: any;
-  timeSeriesData: any;
+  data: ResponseChartData;
+  timeSeriesData: TimeSeriesData;
+}
+
+// Chart data interfaces
+interface ResponseTimeDataItem {
+  date: string;
+  responseEfficiency: number;
+  rescuedPeople: number;
+}
+
+interface ResourceDataItem {
+  name: string;
+  available: number;
+  required: number;
+}
+
+interface CallResponseDataItem {
+  name: string;
+  value: number;
+}
+
+interface EfficiencyChangeItem {
+  date: string;
+  change: number;
 }
 
 const ResponseChart: React.FC<ResponseChartProps> = ({ data, timeSeriesData }) => {
   const { emergencyResponse } = data;
 
   // Format data for charts
-  const responseTimeData = timeSeriesData.dates.map((date: string, index: number) => ({
+  const responseTimeData: ResponseTimeDataItem[] = timeSeriesData.dates.map((date: string, index: number) => ({
     date,
     responseEfficiency: timeSeriesData.responseEfficiency[index],
     rescuedPeople: timeSeriesData.rescuedPeople[index]
   }));
 
-  const resourceData = [
+  const resourceData: ResourceDataItem[] = [
     {
       name: "Personnel",
       available: emergencyResponse.resourceAllocation.personnel,
@@ -52,13 +99,13 @@ const ResponseChart: React.FC<ResponseChartProps> = ({ data, timeSeriesData }) =
     },
   ];
 
-  const callResponseData = [
+  const callResponseData: CallResponseDataItem[] = [
     { name: "Responded", value: emergencyResponse.callsResponded },
     { name: "Pending", value: emergencyResponse.callsReceived - emergencyResponse.callsResponded }
   ];
 
   // Calculate daily response efficiency change
-  const efficiencyChanges = [];
+  const efficiencyChanges: EfficiencyChangeItem[] = [];
   for (let i = 1; i < timeSeriesData.responseEfficiency.length; i++) {
     efficiencyChanges.push({
       date: timeSeriesData.dates[i],

@@ -14,6 +14,47 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.heat/dist/leaflet-heat.js";
 
+// Type definitions for map data
+interface PointData {
+  id: string;
+  lat: number;
+  lng: number;
+  type: string;
+  severity: "critical" | "high" | "medium" | "low" | "none";
+  title?: string;
+  description?: string;
+}
+
+interface PolygonData {
+  coordinates: [number, number][];
+  color?: string;
+  fillColor?: string;
+  name?: string;
+  description?: string;
+  level?: "mandatory" | "voluntary" | "warning" | "alert";
+}
+
+interface HeatmapData {
+  lat: number;
+  lng: number;
+  intensity?: number;
+}
+
+// Extend Leaflet namespace to include heat layer
+declare global {
+  namespace L {
+    function heatLayer(
+      latlngs: [number, number, number][],
+      options?: {
+        radius?: number;
+        blur?: number;
+        maxZoom?: number;
+        gradient?: { [key: number]: string };
+      }
+    ): L.Layer;
+  }
+}
+
 interface DisasterMapProps {
   center: [number, number]; // [latitude, longitude]
   zoom: number;
@@ -21,9 +62,9 @@ interface DisasterMapProps {
   overlayOpacity: number;
   mapStyle: string;
   showLabels: boolean;
-  pointData?: any[];
-  polygonData?: any[];
-  heatmapData?: any[];
+  pointData?: PointData[];
+  polygonData?: PolygonData[];
+  heatmapData?: HeatmapData[];
 }
 
 const DisasterMap: React.FC<DisasterMapProps> = ({
@@ -143,6 +184,29 @@ const DisasterMap: React.FC<DisasterMapProps> = ({
     });
   }, [mapLayers, isMapInitialized]);
 
+  // Function to create custom icons based on point type and severity
+  const getPointIcon = (type: string, severity: PointData["severity"]) => {
+    // Define colors for different severities
+    const colors = {
+      critical: '#ef4444', // red
+      high: '#f59e0b',     // amber
+      medium: '#eab308',   // yellow
+      low: '#3b82f6',      // blue
+      none: '#10b981'      // green
+    };
+
+    // Get color based on severity
+    const color = colors[severity] || colors.medium;
+
+    // Create icon with different shapes based on type
+    return L.divIcon({
+      className: `custom-marker-icon ${type} ${severity}`,
+      html: `<div style="background-color: ${color};" class="marker-icon-inner"></div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+  };
+
   // Update point data when it changes
   useEffect(() => {
     if (!isMapInitialized || !mapRef.current || !pointData.length) return;
@@ -177,29 +241,6 @@ const DisasterMap: React.FC<DisasterMapProps> = ({
 
     // Add marker cluster to the appropriate layer group
     layerGroupsRef.current.damage.addLayer(markers);
-
-    // Function to create custom icons based on point type and severity
-    function getPointIcon(type: string, severity: string) {
-      // Define colors for different severities
-      const colors = {
-        critical: '#ef4444', // red
-        high: '#f59e0b',     // amber
-        medium: '#eab308',   // yellow
-        low: '#3b82f6',      // blue
-        none: '#10b981'      // green
-      };
-
-      // Get color based on severity
-      const color = colors[severity as keyof typeof colors] || colors.medium;
-
-      // Create icon with different shapes based on type
-      return L.divIcon({
-        className: `custom-marker-icon ${type} ${severity}`,
-        html: `<div style="background-color: ${color};" class="marker-icon-inner"></div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      });
-    }
   }, [pointData, isMapInitialized]);
 
   // Update polygon data when it changes
@@ -245,7 +286,7 @@ const DisasterMap: React.FC<DisasterMapProps> = ({
     }
 
     // Create heatmap layer
-    const heatLayer = (L as any).heatLayer(
+    const heatLayer = L.heatLayer(
       heatmapData.map(point => [point.lat, point.lng, point.intensity || 1]),
       {
         radius: 25,

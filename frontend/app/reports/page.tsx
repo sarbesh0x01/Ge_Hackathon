@@ -24,7 +24,6 @@ import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -40,12 +39,10 @@ import {
   FileJson,
   FileImage,
   Clock,
-  BarChart2,
   Eye,
   Trash,
   MoreHorizontal,
   Star,
-  AlertTriangle,
   CheckCircle2,
   Printer,
   Calendar

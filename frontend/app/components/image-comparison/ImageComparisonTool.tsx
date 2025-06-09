@@ -15,7 +15,6 @@ import {
   FileUp,
   ImageIcon,
   PanelLeftOpen,
-  PanelRightOpen,
   Eye,
   Download,
   Zap,
@@ -104,6 +103,21 @@ interface VegetationLoss {
   density?: string;
   vegetation_type?: string;
   ecological_impact?: string;
+}
+
+// Type for backend analysis result data
+interface BackendAnalysisResult {
+  comparison_id: string;
+  changed_pixels_percentage?: number;
+  severity_score?: number;
+  building_damage?: BuildingDamage[];
+  road_damage?: RoadDamage[];
+  flooded_areas?: FloodedArea[];
+  vegetation_loss?: VegetationLoss[];
+  damage_overview?: {
+    damage_types?: Record<string, unknown>;
+  };
+  created_at?: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -450,7 +464,7 @@ const ImageComparisonTool = ({ defaultApiKey = "" }) => {
   };
 
   // Process the analysis result from the API
-  const processAnalysisResult = (resultData: any) => {
+  const processAnalysisResult = (resultData: BackendAnalysisResult) => {
     // Convert backend structure to frontend structure
     const result: AnalysisResult = {
       comparison_id: resultData.comparison_id,
@@ -479,7 +493,7 @@ const ImageComparisonTool = ({ defaultApiKey = "" }) => {
   };
 
   // Extract affected areas from the backend response
-  const extractAffectedAreas = (resultData: any): string[] => {
+  const extractAffectedAreas = (resultData: BackendAnalysisResult): string[] => {
     const areas = [];
 
     // Check building damage
@@ -541,7 +555,7 @@ const ImageComparisonTool = ({ defaultApiKey = "" }) => {
   };
 
   // Get recommendations from backend or generate them
-  const getRecommendations = async (resultData: any, disasterType: string): Promise<string[]> => {
+  const getRecommendations = async (resultData: BackendAnalysisResult, disasterType: string): Promise<string[]> => {
     // Try to get recommendations from the API first
     if (isApiAvailable && resultData.comparison_id) {
       try {
@@ -563,7 +577,7 @@ const ImageComparisonTool = ({ defaultApiKey = "" }) => {
   };
 
   // Generate recommendations based on analysis results and disaster type
-  const generateRecommendations = (resultData: any, disasterType: string): string[] => {
+  const generateRecommendations = (resultData: BackendAnalysisResult, disasterType: string): string[] => {
     const recommendations = [];
 
     // Add recommendation based on building damage
@@ -605,16 +619,6 @@ const ImageComparisonTool = ({ defaultApiKey = "" }) => {
   // Update NLP tab with analysis results
   const updateNLPWithAnalysisResults = (result: AnalysisResult) => {
     if (activeTab !== "nlp") return;
-
-    // Add a system message with analysis info
-    const analysisInfo = `
-      Image analysis complete. Found ${result.damagePercentage}% damage with ${result.severity} severity.
-      Affected areas include: ${result.affectedAreas.join(", ")}.
-      Building damage: ${result.building_damage.length} structures affected.
-      Road damage: ${result.road_damage.length} sections affected.
-      Flooded areas: ${result.flooded_areas.length} areas detected.
-      Vegetation loss: ${result.vegetation_loss.length} areas with damage.
-    `;
 
     // Update system prompt to include analysis data
     setMessages(prev => {
@@ -781,7 +785,7 @@ Analysis results:
 
       // Parse the analysis text to extract structured data
       const damagePercentage = extractDamagePercentage(analysisText);
-      const affectedAreas = extractAffectedAreas(analysisText);
+      const affectedAreas = extractAffectedAreasFromText(analysisText);
       const severity = determineSeverity(damagePercentage);
       const recommendations = extractRecommendations(analysisText);
 
@@ -836,7 +840,7 @@ Analysis results:
   };
 
   // Extract affected areas from analysis text
-  const extractAffectedAreas = (text: string): string[] => {
+  const extractAffectedAreasFromText = (text: string): string[] => {
     // Common affected areas to look for
     const commonAreas = [
       "Building Structures", "Roads", "Bridges", "Vegetation",
@@ -1950,7 +1954,7 @@ Analysis results:
             {/* API Key Input */}
             {showApiKeyInput && (
               <div className="p-3 border-b bg-gray-50">
-                <div className="text-sm mb-2">Enter your Groq API Key (starts with "gsk_")</div>
+                <div className="text-sm mb-2">Enter your Groq API Key (starts with &ldquo;gsk_&rdquo;)</div>
                 <div className="flex gap-2">
                   <Input
                     type="password"

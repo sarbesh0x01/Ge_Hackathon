@@ -15,7 +15,6 @@ import {
   FileUp,
   ImageIcon,
   PanelLeftOpen,
-  PanelRightOpen,
   Eye,
   Download,
   Zap,
@@ -74,6 +73,62 @@ interface KnowledgeEntry {
     region?: string;
     date?: string;
   };
+}
+
+// Building damage interface
+interface BuildingDamage {
+  id: number;
+  coordinates: number[];
+  severity: string;
+  confidence: number;
+  type: string;
+  safety: string;
+}
+
+// Road damage interface
+interface RoadDamage {
+  id: number;
+  coordinates: number[];
+  severity: string;
+  confidence: number;
+  length: number;
+  passability: string;
+}
+
+// Flooded area interface
+interface FloodedArea {
+  id: number;
+  coordinates: number[];
+  water_depth: string;
+  area: number;
+  confidence: number;
+  area_sqm: number;
+  flow_direction: string;
+  flood_timeline: string;
+}
+
+// Vegetation loss interface
+interface VegetationLoss {
+  id: number;
+  coordinates: number[];
+  area: string;
+  confidence: number;
+  density: string;
+  vegetation_type: string;
+  ecological_impact: string;
+}
+
+// Analysis results interface
+interface AnalysisResults {
+  comparison_id?: string;
+  damagePercentage: number;
+  affectedAreas: string[];
+  recommendations: string[];
+  severity: "low" | "medium" | "high";
+  building_damage?: BuildingDamage[];
+  road_damage?: RoadDamage[];
+  flooded_areas?: FloodedArea[];
+  vegetation_loss?: VegetationLoss[];
 }
 
 // Mock knowledge base for disaster analysis (in a real implementation, this would be stored in a database)
@@ -203,17 +258,7 @@ const ImageComparisonTool = () => {
   // State for analysis
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [analysisResults, setAnalysisResults] = useState<null | {
-    comparison_id?: string;
-    damagePercentage: number;
-    affectedAreas: string[];
-    recommendations: string[];
-    severity: "low" | "medium" | "high";
-    building_damage?: any[];
-    road_damage?: any[];
-    flooded_areas?: any[];
-    vegetation_loss?: any[];
-  }>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
 
   // State for slider
   const [sliderValue, setSliderValue] = useState(50);
@@ -229,7 +274,7 @@ const ImageComparisonTool = () => {
 
   // State for detailed analysis modal
   const [isDetailedViewOpen, setIsDetailedViewOpen] = useState(false);
-  const [detailedData, setDetailedData] = useState<any>(null);
+  const [detailedData, setDetailedData] = useState<AnalysisResults | null>(null);
 
   // State for export progress
   const [isExporting, setIsExporting] = useState(false);
@@ -443,7 +488,7 @@ const ImageComparisonTool = () => {
           const comparison_id = `comp_${Date.now()}`;
 
           // Mock analysis results
-          const mockResults = {
+          const mockResults: AnalysisResults = {
             comparison_id: comparison_id,
             damagePercentage: Math.floor(Math.random() * 60) + 10,
             affectedAreas: ["Building Structures", "Roads", "Vegetation"],
@@ -942,7 +987,6 @@ const ImageComparisonTool = () => {
     const syntheticEvent = { preventDefault: () => { } } as React.FormEvent;
     handleSendMessage(syntheticEvent);
   };
-
 
   // Frontend GUI - Return statement 
   return (
@@ -2012,6 +2056,5 @@ const ImageComparisonTool = () => {
     </div>
   );
 }
-
 
 export default ImageComparisonTool;

@@ -23,15 +23,67 @@ import {
 } from 'recharts';
 import { Badge } from "@/components/ui/badge";
 
+// Type definitions for resource data
+interface ResourceItem {
+  available: number;
+  required: number;
+}
+
+interface AvailableResources {
+  [key: string]: ResourceItem;
+}
+
+interface PriorityArea {
+  area: string;
+  priority: "Critical" | "High" | "Medium" | "Low";
+}
+
+type SupplyChainStatus = "Critical" | "Limited" | "Strained" | "Available" | "Unavailable";
+
+interface SupplyChainStatusMap {
+  [key: string]: SupplyChainStatus;
+}
+
+interface ResourceAllocation {
+  availableResources: AvailableResources;
+  priorityAreas: PriorityArea[];
+  supplyChainStatus: SupplyChainStatusMap;
+}
+
+interface ResourceChartData {
+  resourceAllocation: ResourceAllocation;
+}
+
 interface ResourceChartProps {
-  data: any;
+  data: ResourceChartData;
+}
+
+// Chart data interfaces
+interface ResourceDataItem {
+  name: string;
+  available: number;
+  required: number;
+  deficit: number;
+  fulfillmentRate: number;
+}
+
+interface PriorityDataItem {
+  name: string;
+  value: number;
+  priority: "Critical" | "High" | "Medium" | "Low";
+}
+
+interface SupplyChainDataItem {
+  name: string;
+  status: SupplyChainStatus;
+  value: number;
 }
 
 const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
   const { resourceAllocation } = data;
 
   // Format data for resource availability chart
-  const resourceData = Object.entries(resourceAllocation.availableResources).map(([key, value]: [string, any]) => ({
+  const resourceData: ResourceDataItem[] = Object.entries(resourceAllocation.availableResources).map(([key, value]: [string, ResourceItem]) => ({
     name: key.charAt(0).toUpperCase() + key.slice(1),
     available: value.available,
     required: value.required,
@@ -40,7 +92,7 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
   }));
 
   // Format data for priority areas chart
-  const priorityData = resourceAllocation.priorityAreas.map((item: any) => ({
+  const priorityData: PriorityDataItem[] = resourceAllocation.priorityAreas.map((item: PriorityArea) => ({
     name: item.area,
     value: item.priority === "Critical" ? 100 :
       item.priority === "High" ? 75 :
@@ -49,7 +101,7 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
   }));
 
   // Format data for supply chain status
-  const supplyChainData = Object.entries(resourceAllocation.supplyChainStatus).map(([key, value]: [string, any]) => ({
+  const supplyChainData: SupplyChainDataItem[] = Object.entries(resourceAllocation.supplyChainStatus).map(([key, value]: [string, SupplyChainStatus]) => ({
     name: key.charAt(0).toUpperCase() + key.slice(1),
     status: value,
     value: value === "Critical" ? 20 :
@@ -63,7 +115,7 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
     "High": "#f97316",
     "Medium": "#eab308",
     "Low": "#84cc16"
-  };
+  } as const;
 
   const STATUS_COLORS = {
     "Critical": "#ef4444",
@@ -71,7 +123,7 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
     "Strained": "#eab308",
     "Available": "#84cc16",
     "Unavailable": "#64748b"
-  };
+  } as const;
 
   return (
     <Card className="w-full">
@@ -134,16 +186,16 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
             </ResponsiveContainer>
 
             <div className="flex justify-center mt-2 gap-2">
-              {["Critical", "High", "Medium", "Low"].map(priority => (
+              {(["Critical", "High", "Medium", "Low"] as const).map(priority => (
                 <Badge
                   key={priority}
                   variant="outline"
                   className="flex items-center gap-1"
-                  style={{ borderColor: PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS] }}
+                  style={{ borderColor: PRIORITY_COLORS[priority] }}
                 >
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS] }}
+                    style={{ backgroundColor: PRIORITY_COLORS[priority] }}
                   ></span>
                   {priority}
                 </Badge>
@@ -163,12 +215,12 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
                   fill="#8884d8"
                   dataKey="value"
                   nameKey="name"
-                  label={({ name, value, status }) => name}
+                  label={({ name }) => name}
                 >
                   {supplyChainData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={STATUS_COLORS[entry.status as keyof typeof STATUS_COLORS]}
+                      fill={STATUS_COLORS[entry.status]}
                     />
                   ))}
                 </Pie>
@@ -183,16 +235,16 @@ const ResourceChart: React.FC<ResourceChartProps> = ({ data }) => {
             </ResponsiveContainer>
 
             <div className="flex justify-center mt-2 flex-wrap gap-2">
-              {Object.keys(STATUS_COLORS).map(status => (
+              {(Object.keys(STATUS_COLORS) as Array<keyof typeof STATUS_COLORS>).map(status => (
                 <Badge
                   key={status}
                   variant="outline"
                   className="flex items-center gap-1"
-                  style={{ borderColor: STATUS_COLORS[status as keyof typeof STATUS_COLORS] }}
+                  style={{ borderColor: STATUS_COLORS[status] }}
                 >
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: STATUS_COLORS[status as keyof typeof STATUS_COLORS] }}
+                    style={{ backgroundColor: STATUS_COLORS[status] }}
                   ></span>
                   {status}
                 </Badge>
