@@ -293,7 +293,6 @@ export default function AdvancedAnalysisPage() {
 
                 {/* Vegetation loss markers */}
                 {showLayers.vegetation && vegetationLoss
-                  .filter(loss => selectedFilter === "all")
                   .map((loss) => (
                   <div
                     key={loss.id}
