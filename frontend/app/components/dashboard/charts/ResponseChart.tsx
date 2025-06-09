@@ -61,10 +61,7 @@ interface ResourceDataItem {
   required: number;
 }
 
-interface CallResponseDataItem {
-  name: string;
-  value: number;
-}
+
 
 interface EfficiencyChangeItem {
   date: string;

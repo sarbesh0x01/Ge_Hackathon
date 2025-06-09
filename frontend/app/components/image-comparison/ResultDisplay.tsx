@@ -95,8 +95,6 @@ interface ResultDisplayProps {
 }
 
 const ResultDisplay: React.FC<ResultDisplayProps> = ({
-  beforeImage,
-  afterImage,
   results,
   onReset
 }) => {
@@ -395,7 +393,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
         <CheckCircle2 className="h-4 w-4 text-green-600" />
         <AlertTitle>Analysis Complete</AlertTitle>
         <AlertDescription>
-          We've analyzed your images and detected {results.damaged_areas.length} areas with changes.
+          We have analyzed your images and detected {results.damaged_areas.length} areas with changes.
         </AlertDescription>
       </Alert>
 
