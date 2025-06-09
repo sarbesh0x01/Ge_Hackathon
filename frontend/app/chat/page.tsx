@@ -1,177 +1,170 @@
 "use client";
 
-import React from "react";
-import DisasterChatbot from "@/app/components/DisasterChatbot";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, HelpCircle, LinkIcon } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Send } from "lucide-react";
 
-export default function ChatPage() {
-  // Get the Groq API key from environment variables
-  // If you're still having trouble with the environment variable, you can hardcode your key here for testing
-  // (But remove it before production!)
-  const groqApiKey = process.env.NEXT_PUBLIC_GROQ_API_KEY || "";
+// Define the props interface
+interface DisasterChatbotProps {
+  apiKey: string;
+  defaultContext: string;
+  defaultDisaster: string;
+}
 
-  // Helpful debugging for environment variables
-  console.log("API Key available:", groqApiKey ? "Yes (starts with " + groqApiKey.substring(0, 4) + ")" : "No");
+// Define message type
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export default function DisasterChatbot({ 
+  apiKey, 
+  defaultContext, 
+  defaultDisaster 
+}: DisasterChatbotProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const sendMessage = async () => {
+    if (!input.trim() || !apiKey) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      // Add your Groq API call here
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'mixtral-8x7b-32768', // or your preferred model
+          messages: [
+            {
+              role: 'system',
+              content: `${defaultContext} You are helping with ${defaultDisaster} related queries.`
+            },
+            ...messages,
+            userMessage
+          ],
+          max_tokens: 1000,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+
+      const data = await response.json();
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: data.choices[0]?.message?.content || 'Sorry, I could not process your request.'
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Error:', error);
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: 'Sorry, there was an error processing your request. Please try again.'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  if (!apiKey) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Disaster Chatbot</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-red-600">
+            API key not found. Please set your NEXT_PUBLIC_GROQ_API_KEY environment variable.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Disaster Information</h1>
-        <p className="text-gray-500">
-          Access emergency information and assistance through our AI chatbot
+    <Card className="h-[600px] flex flex-col">
+      <CardHeader>
+        <CardTitle>Disaster Information Assistant</CardTitle>
+        <p className="text-sm text-gray-600">
+          Ask questions about {defaultDisaster} safety and emergency preparedness
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
-          <DisasterChatbot
-            apiKey={groqApiKey}
-            defaultContext="You are analyzing the current hurricane disaster situation. Focus on providing actionable advice specific to hurricane impacts, damage assessment, and recovery strategies."
-            defaultDisaster="hurricane"
-          />
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-blue-600" />
-                Ask About
-              </CardTitle>
-              <CardDescription>Suggested topics for the chatbot</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div
-                  className="p-2 rounded-md border bg-gray-50 text-sm cursor-pointer hover:bg-blue-50 hover:border-blue-100"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
-                    if (input) {
-                      input.value = "What should I do during a hurricane?";
-                      input.focus();
-                      // Trigger a change event to update React state
-                      const event = new Event('input', { bubbles: true });
-                      input.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  What should I do during a hurricane?
-                </div>
-                <div
-                  className="p-2 rounded-md border bg-gray-50 text-sm cursor-pointer hover:bg-blue-50 hover:border-blue-100"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
-                    if (input) {
-                      input.value = "How can I prepare for a disaster?";
-                      input.focus();
-                      // Trigger a change event to update React state
-                      const event = new Event('input', { bubbles: true });
-                      input.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  How can I prepare for a disaster?
-                </div>
-                <div
-                  className="p-2 rounded-md border bg-gray-50 text-sm cursor-pointer hover:bg-blue-50 hover:border-blue-100"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
-                    if (input) {
-                      input.value = "What emergency resources are available?";
-                      input.focus();
-                      // Trigger a change event to update React state
-                      const event = new Event('input', { bubbles: true });
-                      input.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  What emergency resources are available?
-                </div>
-                <div
-                  className="p-2 rounded-md border bg-gray-50 text-sm cursor-pointer hover:bg-blue-50 hover:border-blue-100"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
-                    if (input) {
-                      input.value = "How do I assess building damage after a hurricane?";
-                      input.focus();
-                      // Trigger a change event to update React state
-                      const event = new Event('input', { bubbles: true });
-                      input.dispatchEvent(event);
-                    }
-                  }}
-                >
-                  How do I assess building damage after a hurricane?
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col">
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+          {messages.length === 0 && (
+            <div className="text-center text-gray-500 py-8">
+              Ask me anything about disaster preparedness and emergency response.
+            </div>
+          )}
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  message.role === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-900'
+                }`}
+              >
+                {message.content}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 rounded-lg px-4 py-2">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <LinkIcon className="h-5 w-5 text-blue-600" />
-              Helpful Resources
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <a
-                href="https://moha.gov.np/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-              >
-                <span>MOHA</span>
-                <LinkIcon className="h-4 w-4 text-gray-400" />
-              </a>
-              <a
-                href="https://nrcs.org/disaster-management/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-              >
-                <span>Red Cross Disaster Relief</span>
-                <LinkIcon className="h-4 w-4 text-gray-400" />
-              </a>
-              <a
-                href="https://www.nepalpolice.gov.np/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-              >
-                <span>Nepal Police</span>
-                <LinkIcon className="h-4 w-4 text-gray-400" />
-              </a>
-              <a
-                href="https://bipad.gov.np/np/national-platform-for-disaster-risk-reduction-npdrr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between p-2 rounded-md border hover:bg-gray-50"
-              >
-                <span>Disaster Assistance</span>
-                <LinkIcon className="h-4 w-4 text-gray-400" />
-              </a>
             </div>
-          </CardContent>
+          )}
         </div>
-      </div>
-
-      <Separator className="my-6" />
-
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-amber-800">Important Notice</h3>
-            <p className="text-sm text-amber-700 mt-1">
-              This chatbot uses the Groq API for more accurate responses. For real emergencies, always contact local emergency services at 911 and follow official guidance from
-              authorities. This tool is designed to provide information and assistance but is not a replacement for
-              professional emergency services.
-            </p>
-          </div>
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1"
+          />
+          <Button
+            onClick={sendMessage}
+            disabled={isLoading || !input.trim()}
+            size="icon"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
